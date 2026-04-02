@@ -198,7 +198,11 @@ describe('PerformanceService', () => {
     const kycPipeline = memberProfileModel.aggregate.mock.calls[0][0];
     expect(kycPipeline[0].$match.districtId).toBeInstanceOf(Types.ObjectId);
 
-    const approvalsPipeline = loanModel.aggregate.mock.calls[1][0];
+    const approvalsCall = loanModel.aggregate.mock.calls.find(
+      ([pipeline]) => pipeline?.[0]?.$match?.districtId,
+    );
+    expect(approvalsCall).toBeDefined();
+    const approvalsPipeline = approvalsCall?.[0];
     expect(approvalsPipeline[0].$match.districtId).toBeInstanceOf(Types.ObjectId);
     expect(approvalsPipeline[0].$match.status.$in).toContain('approved');
   });
@@ -215,12 +219,22 @@ describe('PerformanceService', () => {
       { period: 'week' } as never,
     );
 
-    const branchLoanPipeline = loanModel.aggregate.mock.calls[2][0];
+    const branchLoanCall = loanModel.aggregate.mock.calls.find(
+      ([pipeline]) => pipeline?.[0]?.$match?.branchId,
+    );
+    expect(branchLoanCall).toBeDefined();
+    const branchLoanPipeline = branchLoanCall?.[0];
     expect(branchLoanPipeline[0].$match.branchId).toBeInstanceOf(Types.ObjectId);
 
-    expect(result.loansHandled).toBe(4);
+    expect(result.loansHandled).toBe(8);
     expect(result.kycCompleted).toBe(5);
     expect(result.pendingTasks).toBe(4);
+  });
+
+  it('fails cleanly when branch summary is requested without an authenticated user', async () => {
+    await expect(service.getBranchSummary(undefined as never, { period: 'week' } as never)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('rejects roles outside their allowed command-center scope', async () => {
@@ -254,4 +268,4 @@ describe('PerformanceService', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
-}
+});

@@ -35,7 +35,7 @@ describe('school console E2E flow', () => {
 
     expect(screen.getByText('Payment posture')).toBeInTheDocument();
     expect(screen.getByText('Parent banking readiness')).toBeInTheDocument();
-    expect(screen.getByText('Students due')).toBeInTheDocument();
+    expect(screen.getAllByText('Students due').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Linked parents').length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Blue Nile Academy')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Lake Tana Preparatory School')).not.toBeInTheDocument();

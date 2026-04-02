@@ -20,6 +20,7 @@ import {
   DashboardSectionCard,
   DashboardTableCard,
   EmptyStateCard,
+  QuickActionChip,
 } from '../../shared/components/BankingDashboard';
 import { ScopedOperationsSummaryPanel } from '../shared-layout/ScopedOperationsSummaryPanel';
 import { LoanWorkflowWatchlistPanel } from '../loan-monitoring/LoanWorkflowWatchlistPanel';
@@ -81,10 +82,23 @@ export function BranchManagerDashboardPage({
 
   const items = overview?.items ?? [];
   const kpis = overview?.kpis;
-  const topPerformer = topEmployees[0] ?? null;
   const criticalEmployees = watchlist.filter((item) => item.status === 'needs_support').length;
   const queuePressure = commandCenter?.pendingTasks ?? 0;
   const kycGap = Math.max((kpis?.pendingApprovals ?? 0) - (commandCenter?.kycCompleted ?? 0), 0);
+  const visibleEmployees =
+    items.length > 0
+      ? items
+      : topEmployees.length > 0
+        ? topEmployees
+        : watchlist;
+  const topPerformer =
+    topEmployees[0] ??
+    [...visibleEmployees].sort((left, right) => right.score - left.score)[0] ??
+    null;
+  const topLoanCloser =
+    [...visibleEmployees].sort((left, right) => right.loansHandled - left.loansHandled)[0] ?? null;
+  const queueLeader =
+    [...visibleEmployees].sort((left, right) => right.pendingTasks - left.pendingTasks)[0] ?? null;
 
   return (
     <DashboardPage>
@@ -138,26 +152,29 @@ export function BranchManagerDashboardPage({
           <article className="branch-mission-card branch-mission-card-actions">
             <span className="eyebrow">Execution snapshot</span>
             <h3>What managers should do</h3>
-            <ol className="branch-action-ladder">
-              <li>
-                <div className="branch-action-ladder-copy">
+            <div className="branch-action-tiles">
+              <div className="branch-action-tile">
+                <span className="branch-action-index">1</span>
+                <div className="branch-action-copy">
                   <strong>{topPerformer?.name ?? 'No employee selected'}</strong>
                   <p>Best branch score at {topPerformer?.score.toLocaleString() ?? '0'} and ready for heavier queue share.</p>
                 </div>
-              </li>
-              <li>
-                <div className="branch-action-ladder-copy">
+              </div>
+              <div className="branch-action-tile">
+                <span className="branch-action-index">2</span>
+                <div className="branch-action-copy">
                   <strong>{commandCenter?.supportHandled.toLocaleString() ?? '0'} support cases handled</strong>
                   <p>Keep service response stable while clearing current pending tasks.</p>
                 </div>
-              </li>
-              <li>
-                <div className="branch-action-ladder-copy">
+              </div>
+              <div className="branch-action-tile">
+                <span className="branch-action-index">3</span>
+                <div className="branch-action-copy">
                   <strong>{watchlist.length.toLocaleString()} employees on watch</strong>
                   <p>Review staff with falling score or growing pending queue before SLA pressure rises.</p>
                 </div>
-              </li>
-            </ol>
+              </div>
+            </div>
           </article>
         </section>
 
@@ -179,6 +196,64 @@ export function BranchManagerDashboardPage({
             { label: 'KYC Exceptions', value: kpis ? kpis.pendingApprovals.toLocaleString() : '0', tone: 'amber' },
           ]}
         />
+
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Frontline Focus Board"
+            description="The fastest way to read branch execution before opening deeper queues."
+            action={<QuickActionChip label={`${visibleEmployees.length.toLocaleString()} staff in view`} />}
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Best loan closer"
+                value={topLoanCloser ? topLoanCloser.loansHandled.toLocaleString() : 'Not available'}
+                note={topLoanCloser?.name ?? 'No branch employee data yet'}
+              />
+              <DashboardMetricRow
+                label="Highest queue pressure"
+                value={queueLeader ? queueLeader.pendingTasks.toLocaleString() : queuePressure.toLocaleString()}
+                note={queueLeader?.name ?? 'Current branch queue'}
+              />
+              <DashboardMetricRow
+                label="Service stability"
+                value={commandCenter?.supportHandled.toLocaleString() ?? '0'}
+                note="Resolved branch support workload"
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Manager Quick Reads"
+            description="Use these branch signals before drilling into loan or support case detail."
+          >
+            <div className="dashboard-stack">
+              <DashboardProgressRow
+                label="Queue pressure"
+                value={`${queuePressure.toLocaleString()} active`}
+                progress={Math.min(Math.max(queuePressure * 8, 12), 100)}
+                tone={queuePressure > 10 ? 'amber' : 'blue'}
+              />
+              <DashboardProgressRow
+                label="KYC completion"
+                value={`${Math.min(
+                  Math.round(((commandCenter?.kycCompleted ?? 0) / Math.max((commandCenter?.kycCompleted ?? 0) + kycGap, 1)) * 100),
+                  100,
+                )}%`}
+                progress={Math.min(
+                  Math.round(((commandCenter?.kycCompleted ?? 0) / Math.max((commandCenter?.kycCompleted ?? 0) + kycGap, 1)) * 100),
+                  100,
+                )}
+                tone={kycGap > 20 ? 'amber' : 'green'}
+              />
+              <DashboardProgressRow
+                label="Staff watchlist"
+                value={`${criticalEmployees.toLocaleString()} flagged`}
+                progress={Math.min(Math.max(criticalEmployees * 18, 8), 100)}
+                tone={criticalEmployees > 0 ? 'red' : 'green'}
+              />
+            </div>
+          </DashboardSectionCard>
+        </DashboardGrid>
 
         <DashboardGrid>
           <DashboardSectionCard
@@ -304,18 +379,22 @@ export function BranchManagerDashboardPage({
         onOpenSupportChat={onOpenSupportChat}
       />
 
-      <DashboardGrid>
-        <DashboardTableCard
-          title="Employee Performance"
-          description="Top branch staff with simplified score and queue visibility."
-          headers={['Employee', 'Loans', 'Tasks', 'Score', 'Action']}
-          rows={items.map((item) => [
-            item.name,
-            item.loansHandled.toLocaleString(),
-            item.pendingTasks.toLocaleString(),
-            `${item.score}`,
-            'Review',
-          ])}
+        <DashboardGrid>
+          <DashboardTableCard
+            title="Employee Performance"
+            description="Top branch staff with simplified score and queue visibility."
+            headers={['Employee', 'Loans', 'Tasks', 'Score', 'Action']}
+            rows={
+              visibleEmployees.length > 0
+                ? visibleEmployees.map((item) => [
+                    item.name,
+                    item.loansHandled.toLocaleString(),
+                    item.pendingTasks.toLocaleString(),
+                    `${item.score}`,
+                    item.status === 'needs_support' ? 'Coach' : 'Review',
+                  ])
+                : [['No employee performance yet', '-', '-', '-', '-']]
+            }
         />
 
         <DashboardSectionCard
@@ -323,7 +402,7 @@ export function BranchManagerDashboardPage({
           description="Staff needing support before the backlog grows further."
         >
           {watchlist.length > 0 ? (
-            <div className="flex flex-col gap-3">
+            <div className="dashboard-stack">
               {watchlist.slice(0, 4).map((item) => (
                 <DashboardProgressRow
                   key={item.entityId}
@@ -400,7 +479,15 @@ export function BranchManagerDashboardPage({
                   item.transactionsProcessed.toLocaleString(),
                   item.score.toLocaleString(),
                 ])
-              : [['No employee performance yet', '-', '-', '-', '-']]
+              : visibleEmployees.length > 0
+                ? visibleEmployees.slice(0, 6).map((item) => [
+                    item.name,
+                    item.kycCompleted.toLocaleString(),
+                    item.supportResolved.toLocaleString(),
+                    item.transactionsProcessed.toLocaleString(),
+                    item.score.toLocaleString(),
+                  ])
+                : [['No employee performance yet', '-', '-', '-', '-']]
           }
         />
 

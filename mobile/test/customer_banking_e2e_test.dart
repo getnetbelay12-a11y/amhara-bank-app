@@ -45,7 +45,7 @@ void main() {
     test('notification reminders can be triggered and fetched in app', () async {
       final api = DemoNotificationApi();
 
-      await api.addNotification(
+      api.addNotification(
         AppNotification(
           notificationId: 'notif_school_due_test',
           type: 'school_payment_due',

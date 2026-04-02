@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 
-import { Panel } from '../../shared/components/Panel';
-import { SimpleTable } from '../../shared/components/SimpleTable';
+import {
+  DashboardCard,
+  DashboardDataTable,
+} from '../../shared/components/BankingDashboard';
 
 type WatchlistPanelFrameProps = {
   title: string;
@@ -26,20 +28,34 @@ export function WatchlistPanelFrame({
   emptyState,
 }: WatchlistPanelFrameProps) {
   return (
-    <Panel title={title} description={description}>
+    <DashboardCard
+      title={title}
+      description={description}
+      className="watchlist-panel-frame"
+    >
       {filterRow}
-      <div
-        className="dashboard-summary-strip dashboard-summary-strip-dense"
-        style={{ ['--summary-chip-count' as string]: String(summaryChips.length) }}
-      >
+      <div className="watchlist-summary-grid">
         {summaryChips.map((chip) => (
-          <div key={chip.label} className="dashboard-summary-chip">
+          <div key={chip.label} className="watchlist-summary-chip">
             <span className="dashboard-summary-label">{chip.label}</span>
             <strong>{chip.value}</strong>
           </div>
         ))}
       </div>
-      <SimpleTable headers={tableHeaders} rows={tableRows} emptyState={emptyState} />
-    </Panel>
+      <DashboardDataTable
+        headers={tableHeaders}
+        rows={
+          tableRows.length > 0
+            ? tableRows
+            : [[
+                emptyState?.title ?? 'Nothing to review right now',
+                emptyState?.description ?? 'This view is clear for the current scope and filter.',
+                '-',
+                '-',
+                '-',
+              ].slice(0, tableHeaders.length)]
+        }
+      />
+    </DashboardCard>
   );
 }

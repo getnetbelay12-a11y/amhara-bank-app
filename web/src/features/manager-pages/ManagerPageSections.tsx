@@ -311,10 +311,17 @@ export function ReportsHubPage({ session }: SessionProps) {
   const totalTransactions = summary.reduce((sum, item) => sum + item.transactionsCount, 0);
   const totalVolume = summary.reduce((sum, item) => sum + item.totalTransactionAmount, 0);
   const totalSchoolPayments = summary.reduce((sum, item) => sum + item.schoolPaymentsCount, 0);
+  const totalLoanApprovals = summary.reduce((sum, item) => sum + item.loanApprovedCount, 0);
+  const totalLoanRejections = summary.reduce((sum, item) => sum + item.loanRejectedCount, 0);
   const reportBars = summary.slice(0, 6).map((item) => ({
     label: titleCase(item.scopeId),
     value: item.transactionsCount,
     tone: 'blue' as const,
+  }));
+  const volumeBars = summary.slice(0, 6).map((item) => ({
+    label: titleCase(item.scopeId),
+    value: item.totalTransactionAmount,
+    tone: 'teal' as const,
   }));
   const scopeLabel =
     getManagerConsoleKind(session.role) === 'head_office'
@@ -322,6 +329,10 @@ export function ReportsHubPage({ session }: SessionProps) {
       : getManagerConsoleKind(session.role) === 'district'
         ? 'Branch'
         : 'Branch';
+  const topScope =
+    [...summary].sort((left, right) => right.transactionsCount - left.transactionsCount)[0] ?? null;
+  const watchScope =
+    [...summary].sort((left, right) => left.loanApprovedCount - right.loanApprovedCount)[0] ?? null;
 
   return (
     <DashboardPage>
@@ -354,6 +365,57 @@ export function ReportsHubPage({ session }: SessionProps) {
           </DashboardSectionCard>
         </DashboardGrid>
 
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Reporting Focus"
+            description="Quick reading on the strongest and weakest visible reporting areas."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label={`Top ${scopeLabel.toLowerCase()}`}
+                value={topScope ? topScope.transactionsCount.toLocaleString() : 'Not available'}
+                note={topScope ? titleCase(topScope.scopeId) : 'No reporting activity yet'}
+              />
+              <DashboardMetricRow
+                label="Loan approvals"
+                value={totalLoanApprovals.toLocaleString()}
+                note="Confirmed across the visible reporting scope"
+              />
+              <DashboardMetricRow
+                label="Rejected or returned"
+                value={totalLoanRejections.toLocaleString()}
+                note="Cases needing follow-up in reporting review"
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Exceptions to Review"
+            description="Scopes that need reporting attention before the next export cycle."
+          >
+            {watchScope ? (
+              <div className="dashboard-stack">
+                <DashboardProgressRow
+                  label={titleCase(watchScope.scopeId)}
+                  value={`${watchScope.loanRejectedCount.toLocaleString()} rejected`}
+                  progress={Math.max(15, Math.min(watchScope.loanApprovedCount * 10, 100))}
+                  tone={watchScope.loanRejectedCount > 0 ? 'amber' : 'green'}
+                />
+                <DashboardMetricRow
+                  label="Pending report focus"
+                  value={watchScope.schoolPaymentsCount.toLocaleString()}
+                  note="School-payment items in the visible reporting mix"
+                />
+              </div>
+            ) : (
+              <EmptyStateCard
+                title="No reporting exceptions"
+                description="Reporting exceptions will appear here when scope data arrives."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
         <DashboardTableCard
           title="Scheduled Reports"
           description="Current export and reporting cadence."
@@ -367,6 +429,20 @@ export function ReportsHubPage({ session }: SessionProps) {
         />
 
         <DashboardGrid>
+          <DashboardSectionCard
+            title="Volume Mix"
+            description="Transaction volume concentration across the visible reporting scope."
+          >
+            {volumeBars.length > 0 ? (
+              <DashboardMiniBars items={volumeBars} />
+            ) : (
+              <EmptyStateCard
+                title="No volume mix yet"
+                description="Volume mix will appear once transaction totals are available."
+              />
+            )}
+          </DashboardSectionCard>
+
           <DashboardTableCard
             title={`${scopeLabel} Activity`}
             description="Operational totals in the current reporting scope."
@@ -989,6 +1065,62 @@ export function StaffSnapshotPage({ session }: SessionProps) {
   const topPerformer = topEmployees[0] ?? null;
   const totalCustomers = staff.reduce((sum, item) => sum + item.customersServed, 0);
   const totalTransactions = staff.reduce((sum, item) => sum + item.transactionsCount, 0);
+  const fallbackRows =
+    overview?.items.map((item) => ({
+      staffId: item.entityId,
+      customersServed: item.customersHelped,
+      transactionsCount: item.transactionsProcessed,
+      loanApprovedCount: item.loansApproved,
+      schoolPaymentsCount: 0,
+      score: item.score,
+      label: item.name,
+    })) ?? [];
+  const staffRows =
+    staff.length > 0
+      ? staff.map((item) => ({
+          ...item,
+          label: titleCase(item.staffId),
+        }))
+      : fallbackRows;
+  const scoreRows =
+    topEmployees.length > 0
+      ? topEmployees.slice(0, 5).map((item) => ({
+          key: item.entityId,
+          label: item.name,
+          score: item.score,
+          note: `${item.pendingTasks} pending`,
+          tone: item.score >= 85 ? 'green' as const : item.score >= 70 ? 'blue' as const : 'amber' as const,
+        }))
+      : staffRows.slice(0, 5).map((item) => ({
+          key: item.staffId,
+          label: item.label,
+          score: item.score,
+          note: `${item.loanApprovedCount.toLocaleString()} loans`,
+          tone: item.score >= 85 ? 'green' as const : item.score >= 70 ? 'blue' as const : 'amber' as const,
+        }));
+  const watchRows =
+    watchlist.length > 0
+      ? watchlist.slice(0, 4).map((item) => ({
+          key: item.entityId,
+          label: item.name,
+          value: `${item.pendingTasks} pending`,
+          progress: Math.min(
+            Math.round((item.pendingTasks / Math.max(item.pendingTasks + item.loansEscalated, 1)) * 100),
+            100,
+          ),
+          tone: item.status === 'needs_support' ? 'red' as const : 'amber' as const,
+        }))
+      : scoreRows
+          .slice()
+          .sort((left, right) => left.score - right.score)
+          .slice(0, 3)
+          .map((item) => ({
+            key: item.key,
+            label: item.label,
+            value: item.note,
+            progress: Math.max(20, Math.min(item.score, 100)),
+            tone: item.score < 70 ? 'red' as const : 'amber' as const,
+          }));
 
   return (
     <DashboardPage>
@@ -1014,15 +1146,15 @@ export function StaffSnapshotPage({ session }: SessionProps) {
             title="Employee Scoreboard"
             description="Top staff score posture in the visible branch scope."
           >
-            {topEmployees.length > 0 ? (
+            {scoreRows.length > 0 ? (
               <div className="dashboard-stack">
-                {topEmployees.slice(0, 5).map((item) => (
+                {scoreRows.map((item) => (
                   <DashboardProgressRow
-                    key={item.entityId}
-                    label={item.name}
+                    key={item.key}
+                    label={item.label}
                     value={`${item.score} score`}
                     progress={Math.min(item.score, 100)}
-                    tone={item.score >= 85 ? 'green' : item.score >= 70 ? 'blue' : 'amber'}
+                    tone={item.tone}
                   />
                 ))}
               </div>
@@ -1064,18 +1196,15 @@ export function StaffSnapshotPage({ session }: SessionProps) {
             title="Employee Watchlist"
             description="Staff members needing manager attention."
           >
-            {watchlist.length > 0 ? (
+            {watchRows.length > 0 ? (
               <div className="dashboard-stack">
-                {watchlist.slice(0, 4).map((item) => (
+                {watchRows.map((item) => (
                   <DashboardProgressRow
-                    key={item.entityId}
-                    label={item.name}
-                    value={`${item.pendingTasks} pending`}
-                    progress={Math.min(
-                      Math.round((item.pendingTasks / Math.max(item.pendingTasks + item.loansEscalated, 1)) * 100),
-                      100,
-                    )}
-                    tone={item.status === 'needs_support' ? 'red' : 'amber'}
+                    key={item.key}
+                    label={item.label}
+                    value={item.value}
+                    progress={item.progress}
+                    tone={item.tone}
                   />
                 ))}
               </div>
@@ -1093,9 +1222,9 @@ export function StaffSnapshotPage({ session }: SessionProps) {
           description="Compact branch staff ranking."
           headers={['Staff', 'Customers', 'Transactions', 'Loans', 'Score']}
           rows={
-            staff.length > 0
-              ? staff.map((item) => [
-                  titleCase(item.staffId),
+            staffRows.length > 0
+              ? staffRows.map((item) => [
+                  item.label,
                   item.customersServed.toLocaleString(),
                   item.transactionsCount.toLocaleString(),
                   item.loanApprovedCount.toLocaleString(),

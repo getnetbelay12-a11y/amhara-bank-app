@@ -342,6 +342,9 @@ export class PerformanceService {
   }
 
   private ensureBranchAccess(currentUser: AuthenticatedUser): void {
+    if (!currentUser) {
+      throw new ForbiddenException('Authentication is required to access this summary.');
+    }
     if (
       ![
         UserRole.ADMIN,

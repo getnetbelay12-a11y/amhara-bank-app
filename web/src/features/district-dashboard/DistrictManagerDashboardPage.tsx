@@ -82,9 +82,22 @@ export function DistrictManagerDashboardPage({
 
   const items = overview?.items ?? [];
   const kpis = overview?.kpis;
-  const topRankedBranch = commandCenter?.branchRanking[0] ?? null;
+  const visibleBranches =
+    items.length > 0
+      ? items
+      : topBranches.length > 0
+        ? topBranches
+        : watchlist;
+  const topRankedBranch =
+    commandCenter?.branchRanking[0] ??
+    [...visibleBranches].sort((left, right) => right.score - left.score)[0] ??
+    null;
   const topApprovalBranch = commandCenter?.loanApprovalsPerBranch[0] ?? null;
   const kycCompletionRate = commandCenter?.kycCompletion.completionRate ?? 0;
+  const highestQueueBranch =
+    [...visibleBranches].sort((left, right) => right.pendingTasks - left.pendingTasks)[0] ?? null;
+  const strongestSupportBranch =
+    [...visibleBranches].sort((left, right) => right.supportResolved - left.supportResolved)[0] ?? null;
 
   return (
     <DashboardPage>
@@ -138,26 +151,29 @@ export function DistrictManagerDashboardPage({
           <article className="district-mission-card district-mission-card-actions">
             <span className="eyebrow">Execution snapshot</span>
             <h3>What to push next</h3>
-            <ol className="district-action-ladder">
-              <li>
-                <div className="district-action-ladder-copy">
-                  <strong>{topApprovalBranch?.branchName ?? 'No branch selected'}</strong>
+            <div className="district-action-tiles">
+              <div className="district-action-tile">
+                <span className="district-action-index">1</span>
+                <div className="district-action-copy">
+                  <strong>{topApprovalBranch?.branchName ?? topRankedBranch?.name ?? 'No branch selected'}</strong>
                   <p>Lead branch on approvals with {topApprovalBranch?.approvedCount.toLocaleString() ?? '0'} completed this period.</p>
                 </div>
-              </li>
-              <li>
-                <div className="district-action-ladder-copy">
+              </div>
+              <div className="district-action-tile">
+                <span className="district-action-index">2</span>
+                <div className="district-action-copy">
                   <strong>{commandCenter?.supportMetrics.openChats.toLocaleString() ?? '0'} open chats</strong>
                   <p>Balance support queues before escalations spill into district intervention.</p>
                 </div>
-              </li>
-              <li>
-                <div className="district-action-ladder-copy">
+              </div>
+              <div className="district-action-tile">
+                <span className="district-action-index">3</span>
+                <div className="district-action-copy">
                   <strong>{watchlist.length.toLocaleString()} branches on watch</strong>
                   <p>Coach branches with weak score or rising pending task levels first.</p>
                 </div>
-              </li>
-            </ol>
+              </div>
+            </div>
           </article>
         </section>
 
@@ -179,6 +195,58 @@ export function DistrictManagerDashboardPage({
             { label: 'KYC Exceptions', value: commandCenter ? commandCenter.kycCompletion.pendingReview.toLocaleString() : '0', tone: 'amber' },
           ]}
         />
+
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="District Focus Board"
+            description="Fast branch-level reading before you drop into branch tables and watchlists."
+            action={<QuickActionChip label={`${visibleBranches.length.toLocaleString()} branches in view`} />}
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Highest queue pressure"
+                value={highestQueueBranch ? highestQueueBranch.pendingTasks.toLocaleString() : 'Not available'}
+                note={highestQueueBranch?.name ?? 'No branch queue data yet'}
+              />
+              <DashboardMetricRow
+                label="Strongest support branch"
+                value={strongestSupportBranch ? strongestSupportBranch.supportResolved.toLocaleString() : 'Not available'}
+                note={strongestSupportBranch?.name ?? 'No support ranking yet'}
+              />
+              <DashboardMetricRow
+                label="Approval leader"
+                value={topApprovalBranch?.approvedCount.toLocaleString() ?? '0'}
+                note={topApprovalBranch?.branchName ?? 'No approval branch yet'}
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Intervention Board"
+            description="District action posture across support, KYC, and watchlist branches."
+          >
+            <div className="dashboard-stack">
+              <DashboardProgressRow
+                label="Support escalation load"
+                value={`${commandCenter?.supportMetrics.escalatedChats.toLocaleString() ?? '0'} escalated`}
+                progress={Math.min(Math.max((commandCenter?.supportMetrics.escalatedChats ?? 0) * 16, 10), 100)}
+                tone={(commandCenter?.supportMetrics.escalatedChats ?? 0) > 0 ? 'amber' : 'green'}
+              />
+              <DashboardProgressRow
+                label="KYC completion"
+                value={`${kycCompletionRate}%`}
+                progress={kycCompletionRate}
+                tone={kycCompletionRate >= 85 ? 'green' : kycCompletionRate >= 70 ? 'blue' : 'amber'}
+              />
+              <DashboardProgressRow
+                label="Branches on watch"
+                value={`${watchlist.length.toLocaleString()} flagged`}
+                progress={Math.min(Math.max(watchlist.length * 18, 8), 100)}
+                tone={watchlist.length > 0 ? 'red' : 'green'}
+              />
+            </div>
+          </DashboardSectionCard>
+        </DashboardGrid>
 
         <DashboardGrid>
           <DashboardSectionCard
@@ -299,18 +367,22 @@ export function DistrictManagerDashboardPage({
         onOpenSupportChat={onOpenSupportChat}
       />
 
-      <DashboardGrid>
-        <DashboardTableCard
-          title="Branch Ranking"
-          description="Top district branches with a simpler banking score table."
+        <DashboardGrid>
+          <DashboardTableCard
+            title="Branch Ranking"
+            description="Top district branches with a simpler banking score table."
           headers={['Branch', 'Loans', 'KYC', 'Score', 'Action']}
-          rows={items.map((item) => [
-            item.name,
-            item.loansHandled.toLocaleString(),
-            item.kycCompleted.toLocaleString(),
-            `${item.score}`,
-            'Review',
-          ])}
+            rows={
+              visibleBranches.length > 0
+                ? visibleBranches.map((item) => [
+                    item.name,
+                    item.loansHandled.toLocaleString(),
+                    item.kycCompleted.toLocaleString(),
+                    `${item.score}`,
+                    item.status === 'needs_support' ? 'Coach' : 'Review',
+                  ])
+                : [['No branch ranking yet', '-', '-', '-', '-']]
+            }
         />
 
         <DashboardSectionCard
@@ -318,7 +390,7 @@ export function DistrictManagerDashboardPage({
           description="District branches needing coaching or intervention."
         >
           {watchlist.length > 0 ? (
-            <div className="flex flex-col gap-3">
+            <div className="dashboard-stack">
               {watchlist.slice(0, 4).map((item) => (
                 <DashboardProgressRow
                   key={item.entityId}

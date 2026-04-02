@@ -7,6 +7,9 @@ import { LoanWorkflowService } from './loan-workflow.service';
 describe('LoanWorkflowService', () => {
   let loanModel: { findById: jest.Mock };
   let memberModel: { aggregate: jest.Mock };
+  let transactionModel: { aggregate: jest.Mock };
+  let autopaySettingModel: { find: jest.Mock };
+  let chatConversationModel: { aggregate: jest.Mock };
   let workflowHistoryModel: { create: jest.Mock };
   let staffActivityLogModel: { create: jest.Mock };
   let notificationsService: { createNotification: jest.Mock };
@@ -34,6 +37,9 @@ describe('LoanWorkflowService', () => {
   beforeEach(() => {
     loanModel = { findById: jest.fn() };
     memberModel = { aggregate: jest.fn() };
+    transactionModel = { aggregate: jest.fn() };
+    autopaySettingModel = { find: jest.fn() };
+    chatConversationModel = { aggregate: jest.fn() };
     workflowHistoryModel = { create: jest.fn() };
     staffActivityLogModel = { create: jest.fn() };
     notificationsService = { createNotification: jest.fn() };
@@ -42,6 +48,9 @@ describe('LoanWorkflowService', () => {
     service = new LoanWorkflowService(
       loanModel as never,
       memberModel as never,
+      transactionModel as never,
+      autopaySettingModel as never,
+      chatConversationModel as never,
       workflowHistoryModel as never,
       staffActivityLogModel as never,
       auditService as never,

@@ -11,7 +11,7 @@ type SimpleTableProps = {
 
 export function SimpleTable({ headers, rows, emptyState }: SimpleTableProps) {
   return (
-    <div className="table-wrap">
+    <div className="table-wrap simple-table-card">
       <table>
         <thead>
           <tr>
