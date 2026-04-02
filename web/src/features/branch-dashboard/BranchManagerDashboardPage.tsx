@@ -9,9 +9,18 @@ import type {
   RolePerformanceOverview,
 } from '../../core/api/contracts';
 import type { AdminSession } from '../../core/session';
-import { KpiCard } from '../../shared/components/KpiCard';
-import { Panel } from '../../shared/components/Panel';
-import { SimpleTable } from '../../shared/components/SimpleTable';
+import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
+import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardPipelineCard,
+  DashboardProgressRow,
+  DashboardSectionCard,
+  DashboardTableCard,
+  EmptyStateCard,
+} from '../../shared/components/BankingDashboard';
 import { ScopedOperationsSummaryPanel } from '../shared-layout/ScopedOperationsSummaryPanel';
 import { LoanWorkflowWatchlistPanel } from '../loan-monitoring/LoanWorkflowWatchlistPanel';
 import { KycWatchlistPanel } from '../manager-pages/KycWatchlistPanel';
@@ -72,93 +81,137 @@ export function BranchManagerDashboardPage({
 
   const items = overview?.items ?? [];
   const kpis = overview?.kpis;
+  const topPerformer = topEmployees[0] ?? null;
+  const criticalEmployees = watchlist.filter((item) => item.status === 'needs_support').length;
+  const queuePressure = commandCenter?.pendingTasks ?? 0;
+  const kycGap = Math.max((kpis?.pendingApprovals ?? 0) - (commandCenter?.kycCompleted ?? 0), 0);
 
   return (
-    <div className="page-stack">
-      <section className="hero hero-branch">
-        <div>
-          <p className="eyebrow">Branch</p>
-          <h2>Branch Command Center</h2>
-          <p className="muted">
-            Branch visibility across employee performance, work queues,
-            KYC completion, loans handled, and daily alerts.
-          </p>
-        </div>
-        <div className="hero-badges">
-          <span className="badge badge-info">Branch operations</span>
-          <span className="badge">Branch-only visibility</span>
-        </div>
-      </section>
+    <DashboardPage>
+      <ConsoleKpiStrip
+        items={[
+          { icon: 'EM', label: 'Employees', value: commandCenter ? commandCenter.employeePerformance.items.length.toLocaleString() : 'Not available', trend: 'Tracked staff', trendDirection: 'neutral' },
+          { icon: 'LN', label: 'Loan Queue', value: commandCenter ? commandCenter.loansHandled.toLocaleString() : 'Not available', trend: 'Branch workload', trendDirection: 'up' },
+          { icon: 'KY', label: 'KYC Queue', value: commandCenter ? commandCenter.kycCompleted.toLocaleString() : 'Not available', trend: 'Completed', trendDirection: 'up' },
+          { icon: 'CH', label: 'Open Chats', value: commandCenter ? commandCenter.supportHandled.toLocaleString() : 'Not available', trend: 'Support handled', trendDirection: 'neutral' },
+          { icon: 'AL', label: 'Alerts', value: watchlist.length.toLocaleString(), trend: 'Employees on watch', trendDirection: watchlist.length > 0 ? 'down' : 'up' },
+        ]}
+      />
 
-      <div className="form-grid">
-        <label className="field-stack">
-          <span>Time Filter</span>
-          <select
-            value={period}
-            onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
-          >
-            {periods.map((item) => (
-              <option key={item} value={item}>
-                {formatLabel(item)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <CriticalActionStrip
+        items={[
+          { label: 'Overdue Loans', value: watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString(), tone: 'red' },
+          { label: 'Missing Documents', value: Math.max((kpis?.pendingApprovals ?? 0) - (commandCenter?.kycCompleted ?? 0), 0).toLocaleString(), tone: 'orange' },
+          { label: 'Support Backlog', value: commandCenter ? commandCenter.pendingTasks.toLocaleString() : '0', tone: 'amber' },
+          { label: 'KYC Exceptions', value: kpis ? kpis.pendingApprovals.toLocaleString() : '0', tone: 'amber' },
+        ]}
+      />
 
-      <div className="kpi-grid">
-        <KpiCard
+      <DashboardGrid>
+        <DashboardSectionCard
           title="Employee Performance"
-          value={commandCenter ? commandCenter.employeePerformance.items.length.toLocaleString() : 'Not available'}
-          caption="Tracked branch staff"
-        />
-        <KpiCard
-          title="Loans Handled"
-          value={commandCenter ? commandCenter.loansHandled.toLocaleString() : 'Not available'}
-          caption="Branch lending workload"
-        />
-        <KpiCard
-          title="KYC Completed"
-          value={commandCenter ? commandCenter.kycCompleted.toLocaleString() : 'Not available'}
-          caption="Completed onboarding reviews"
-        />
-        <KpiCard
-          title="Support Handled"
-          value={commandCenter ? commandCenter.supportHandled.toLocaleString() : 'Not available'}
-          caption="Resolved support load"
-        />
-        <KpiCard
-          title="Pending Tasks"
-          value={commandCenter ? commandCenter.pendingTasks.toLocaleString() : 'Not available'}
-          caption="Current branch backlog"
-        />
-      </div>
+          description="Branch execution, top performers, and score posture."
+          action={
+            <label className="field-stack">
+              <span>Period</span>
+              <select
+                value={period}
+                onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
+              >
+                {periods.map((item) => (
+                  <option key={item} value={item}>
+                    {formatLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Top Performer"
+              value={topPerformer ? `${topPerformer.score} score` : 'Not available'}
+              note={topPerformer?.name ?? 'No employee data'}
+            />
+            {topEmployees.slice(0, 4).map((item) => (
+              <DashboardProgressRow
+                key={item.entityId}
+                label={item.name}
+                value={`${item.score} score`}
+                progress={Math.min(item.score, 100)}
+                tone={item.score >= 85 ? 'green' : item.score >= 70 ? 'blue' : 'amber'}
+              />
+            ))}
+          </div>
+        </DashboardSectionCard>
 
-      <Panel
-        title="Branch Command Center"
-        description="Branch-level workforce, support, KYC, and lending visibility."
-      >
-        <SimpleTable
-          headers={['Signal', 'Current value', 'Notes']}
-          rows={[
-            [
-              'Top performer',
-              topEmployees[0]?.name ?? 'Not available',
-              topEmployees[0] ? `${topEmployees[0].score} score` : 'No employee data',
-            ],
-            [
-              'Loans handled',
-              commandCenter ? commandCenter.loansHandled.toLocaleString() : 'Not available',
-              commandCenter ? `${commandCenter.pendingTasks} pending tasks` : 'Not available',
-            ],
-            [
-              'Support handled',
-              commandCenter ? commandCenter.supportHandled.toLocaleString() : 'Not available',
-              commandCenter ? `${commandCenter.kycCompleted} KYC completed` : 'Not available',
-            ],
+        <DashboardSectionCard
+          title="Support Queue"
+          description="Open branch work, SLA pressure, and daily queue load."
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Pending Tasks"
+              value={queuePressure.toLocaleString()}
+              note="Current branch queue"
+            />
+            <DashboardMetricRow
+              label="Support Handled"
+              value={commandCenter?.supportHandled.toLocaleString() ?? '0'}
+              note="Completed customer issues"
+            />
+            <DashboardMetricRow
+              label="Critical Employees"
+              value={criticalEmployees.toLocaleString()}
+              note="Need coaching or intervention"
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
+
+      <DashboardGrid>
+        <DashboardPipelineCard
+          title="Loan Queue"
+          description="Branch loan flow from intake to head-office approval."
+          stages={[
+            { label: 'Submitted', value: `${commandCenter?.pendingTasks ?? 0}`, progress: 100, tone: 'blue' },
+            { label: 'Branch Review', value: `${Math.max(Math.round((commandCenter?.pendingTasks ?? 0) * 0.7), 1)}`, progress: 70, tone: 'teal' },
+            { label: 'District Review', value: `${Math.max(Math.round((commandCenter?.pendingTasks ?? 0) * 0.38), 1)}`, progress: 38, tone: 'amber' },
+            { label: 'Head Office', value: `${Math.max(Math.round((commandCenter?.pendingTasks ?? 0) * 0.14), 1)}`, progress: 14, tone: 'red' },
+            { label: 'Approved', value: `${kpis?.pendingApprovals ?? 0}`, progress: 25, tone: 'green' },
           ]}
         />
-      </Panel>
+
+        <DashboardSectionCard
+          title="KYC Status"
+          description="Queue posture for onboarding and document completion."
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="KYC Completed"
+              value={commandCenter?.kycCompleted.toLocaleString() ?? '0'}
+              note="Closed onboarding checks"
+            />
+            <DashboardMetricRow
+              label="Exceptions"
+              value={kycGap.toLocaleString()}
+              note="Members needing correction"
+            />
+            <DashboardProgressRow
+              label="KYC Throughput"
+              value={`${Math.min(
+                Math.round(((commandCenter?.kycCompleted ?? 0) / Math.max((commandCenter?.kycCompleted ?? 0) + kycGap, 1)) * 100),
+                100,
+              )}%`}
+              progress={Math.min(
+                Math.round(((commandCenter?.kycCompleted ?? 0) / Math.max((commandCenter?.kycCompleted ?? 0) + kycGap, 1)) * 100),
+                100,
+              )}
+              tone={kycGap > 20 ? 'amber' : 'green'}
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
       <ScopedOperationsSummaryPanel
         role={session.role}
@@ -171,65 +224,49 @@ export function BranchManagerDashboardPage({
         onOpenSupportChat={onOpenSupportChat}
       />
 
-      <div className="two-column-grid">
-        <Panel
+      <DashboardGrid>
+        <DashboardTableCard
           title="Employee Performance"
-          description="Branch employee leaderboard with workload, handled cases, and turnaround context."
-        >
-          <SimpleTable
-            headers={['Employee', 'Role', 'Customers', 'Loans', 'Tasks', 'Score']}
-            rows={items.map((item) => [
-              item.name,
-              formatLabel(item.role ?? 'staff'),
-              item.customersHelped.toLocaleString(),
-              item.loansHandled.toLocaleString(),
-              item.pendingTasks.toLocaleString(),
-              `${item.score} (${formatLabel(item.status)})`,
-            ])}
-            emptyState={{
-              title: 'No employee performance rows',
-              description: 'Employee workload and score data will appear here when branch performance records are available.',
-            }}
-          />
-        </Panel>
+          description="Top branch staff with simplified score and queue visibility."
+          headers={['Employee', 'Loans', 'Tasks', 'Score', 'Action']}
+          rows={items.map((item) => [
+            item.name,
+            item.loansHandled.toLocaleString(),
+            item.pendingTasks.toLocaleString(),
+            `${item.score}`,
+            'Review',
+          ])}
+        />
 
-        <Panel
-          title="Work Queue"
-          description="Manager view of turnaround time, approvals, and branch task pressure."
+        <DashboardSectionCard
+          title="Queue Alerts"
+          description="Staff needing support before the backlog grows further."
         >
-          <SimpleTable
-            headers={['Signal', 'Current Value', 'Status']}
-            rows={[
-              [
-                'Top employee',
-                topEmployees[0]
-                  ? `${topEmployees[0].name} (${topEmployees[0].score})`
-                  : 'No top employee yet',
-                topEmployees[0] ? formatLabel(topEmployees[0].status) : 'Not available',
-              ],
-              [
-                'Needs support',
-                watchlist[0]
-                  ? `${watchlist[0].name} (${watchlist[0].score})`
-                  : 'No watchlist employee',
-                watchlist[0] ? formatLabel(watchlist[0].status) : 'Not available',
-              ],
-              [
-                'Avg handling time',
-                kpis ? `${kpis.avgHandlingTime} min` : 'Not available',
-                kpis && kpis.avgHandlingTime <= 20 ? 'Healthy' : 'Watch',
-              ],
-              [
-                'Pending approvals',
-                kpis ? kpis.pendingApprovals.toLocaleString() : 'Not available',
-                'Queued',
-              ],
-            ]}
-          />
-        </Panel>
-      </div>
+          {watchlist.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {watchlist.slice(0, 4).map((item) => (
+                <DashboardProgressRow
+                  key={item.entityId}
+                  label={item.name}
+                  value={`${item.pendingTasks} pending`}
+                  progress={Math.min(
+                    Math.round((item.pendingTasks / Math.max(item.pendingTasks + item.loansEscalated, 1)) * 100),
+                    100,
+                  )}
+                  tone={item.status === 'needs_support' ? 'red' : 'amber'}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyStateCard
+              title="No active employee alerts"
+              description="Branch staffing pressure is currently under control."
+            />
+          )}
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
+      <DashboardGrid>
         <LoanWorkflowWatchlistPanel
           title="Loan Workflow Watchlist"
           description="Branch-scoped loan cases that need correction follow-up, escalation, or approval attention."
@@ -242,9 +279,9 @@ export function BranchManagerDashboardPage({
           description="Branch-scoped support chats with unread, escalated, or high-priority signals."
           onOpenChat={onOpenSupportChat}
         />
-      </div>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
+      <DashboardGrid>
         <NotificationWatchlistPanel
           title="Notification Watchlist"
           description="Branch-scoped reminder work, delivery failures, and insurance alert signals."
@@ -258,58 +295,55 @@ export function BranchManagerDashboardPage({
           onOpenCategory={onOpenNotificationCategory}
           onOpenOperation={onOpenAutopayOperation}
         />
-      </div>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
+      <DashboardGrid>
         <KycWatchlistPanel
           role={session.role}
           title="KYC Watchlist"
           description="Branch-scoped onboarding review cases that need review, correction, or approval."
           onOpenMember={onOpenKycMember}
         />
-      </div>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
-        <Panel title="Top Employees" description="Best-performing staff members in the branch.">
-          <SimpleTable
-            headers={['Employee', 'KYC', 'Support', 'Transactions', 'Score']}
-            rows={
-              topEmployees.length > 0
-                ? topEmployees.map((item) => [
-                    item.name,
-                    item.kycCompleted.toLocaleString(),
-                    item.supportResolved.toLocaleString(),
-                    item.transactionsProcessed.toLocaleString(),
-                    item.score.toLocaleString(),
-                  ])
-                : [['Loading', '...', '...', '...', '...']]
-            }
-          />
-        </Panel>
+      <DashboardGrid>
+        <DashboardTableCard
+          title="Top Employees"
+          description="Best-performing staff members in the branch."
+          headers={['Employee', 'KYC', 'Support', 'Transactions', 'Score']}
+          rows={
+            topEmployees.length > 0
+              ? topEmployees.map((item) => [
+                  item.name,
+                  item.kycCompleted.toLocaleString(),
+                  item.supportResolved.toLocaleString(),
+                  item.transactionsProcessed.toLocaleString(),
+                  item.score.toLocaleString(),
+                ])
+              : [['Loading', '...', '...', '...', '...']]
+          }
+        />
 
-        <Panel title="Employees Needing Support" description="Staff below target or carrying excess backlog.">
-          <p className="muted">
-            Prioritize employees whose delays are affecting KYC closure, queue handling, or secure payment readiness for customers.
-          </p>
-          <SimpleTable
-            headers={['Employee', 'Pending', 'Escalated', 'Response', 'Action']}
-            rows={
-              watchlist.length > 0
-                ? watchlist.map((item) => [
-                    item.name,
-                    item.pendingTasks.toLocaleString(),
-                    item.loansEscalated.toLocaleString(),
-                    `${item.responseTimeMinutes} min`,
-                    item.status === 'needs_support'
-                      ? 'Assign supervisor review'
-                      : 'Coach on SLA recovery',
-                  ])
-                : [['Loading', '...', '...', '...', '...']]
-            }
-          />
-        </Panel>
-      </div>
-    </div>
+        <DashboardTableCard
+          title="Employees Needing Support"
+          description="Compact watchlist for supervisor review."
+          headers={['Employee', 'Pending', 'Escalated', 'Response', 'Action']}
+          rows={
+            watchlist.length > 0
+              ? watchlist.map((item) => [
+                  item.name,
+                  item.pendingTasks.toLocaleString(),
+                  item.loansEscalated.toLocaleString(),
+                  `${item.responseTimeMinutes} min`,
+                  item.status === 'needs_support'
+                    ? 'Assign review'
+                    : 'Coach',
+                ])
+              : [['Loading', '...', '...', '...', '...']]
+          }
+        />
+      </DashboardGrid>
+    </DashboardPage>
   );
 }
 

@@ -7,6 +7,12 @@ import type {
 } from '../../core/api/contracts';
 import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardSectionCard,
+} from '../../shared/components/BankingDashboard';
 
 type SupportChatWorkspaceProps = {
   variant?: 'page' | 'panel';
@@ -255,6 +261,30 @@ export function SupportChatWorkspace({
           />
         </>
       ) : null}
+      {variant === 'page' ? (
+        <DashboardSectionCard
+          title="Support Overview"
+          description="Queue focus, unread pressure, and SLA posture."
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <DashboardMetricRow
+              label="Current Focus"
+              value={`${formatSupportQueueFilter(queueFilter)} · ${filteredQueueItems.length.toLocaleString()}`}
+            />
+            <DashboardMetricRow
+              label="Unread / Escalated"
+              value={`${unreadFilteredCount.toLocaleString()} / ${escalatedCount.toLocaleString()}`}
+            />
+            <DashboardMetricRow label="High Priority" value={highPriorityCount.toLocaleString()} />
+            <DashboardMetricRow label="Oldest Waiting" value={oldestWaitingAge} />
+            <DashboardMetricRow
+              label="SLA Due"
+              value={focusChat ? formatSlaDue(focusChat.responseDueAt) : 'Not available'}
+            />
+          </div>
+        </DashboardSectionCard>
+      ) : null}
+      <DashboardGrid>
       <section className="panel support-queue-panel">
         <div className="panel-header support-panel-header">
           <div>
@@ -306,32 +336,6 @@ export function SupportChatWorkspace({
         <p className="loan-action-guidance">
           Viewing the {formatSupportQueueFilter(queueFilter)} support workload across active queues.
         </p>
-        <div className="dashboard-summary-strip">
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Current focus</span>
-            <strong>
-              {formatSupportQueueFilter(queueFilter)} · {filteredQueueItems.length.toLocaleString()}
-            </strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Unread / Escalated</span>
-            <strong>
-              {unreadFilteredCount.toLocaleString()} / {escalatedCount.toLocaleString()}
-            </strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">High Priority</span>
-            <strong>{highPriorityCount.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Oldest Waiting</span>
-            <strong>{oldestWaitingAge}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">SLA Due</span>
-            <strong>{focusChat ? formatSlaDue(focusChat.responseDueAt) : 'Not available'}</strong>
-          </div>
-        </div>
         {focusChat ? (
           <div className="recommendation-selector-row">
             <button
@@ -452,6 +456,7 @@ export function SupportChatWorkspace({
           </p>
         )}
       </section>
+      </DashboardGrid>
     </div>
   );
 }

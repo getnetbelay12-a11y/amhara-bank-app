@@ -9,9 +9,19 @@ import type {
   RolePerformanceOverview,
 } from '../../core/api/contracts';
 import type { AdminSession } from '../../core/session';
-import { KpiCard } from '../../shared/components/KpiCard';
-import { Panel } from '../../shared/components/Panel';
-import { SimpleTable } from '../../shared/components/SimpleTable';
+import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
+import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardPipelineCard,
+  DashboardProgressRow,
+  DashboardSectionCard,
+  DashboardTableCard,
+  EmptyStateCard,
+  QuickActionChip,
+} from '../../shared/components/BankingDashboard';
 import { ScopedOperationsSummaryPanel } from '../shared-layout/ScopedOperationsSummaryPanel';
 import { LoanWorkflowWatchlistPanel } from '../loan-monitoring/LoanWorkflowWatchlistPanel';
 import { KycWatchlistPanel } from '../manager-pages/KycWatchlistPanel';
@@ -72,106 +82,131 @@ export function DistrictManagerDashboardPage({
 
   const items = overview?.items ?? [];
   const kpis = overview?.kpis;
+  const topRankedBranch = commandCenter?.branchRanking[0] ?? null;
+  const topApprovalBranch = commandCenter?.loanApprovalsPerBranch[0] ?? null;
+  const kycCompletionRate = commandCenter?.kycCompletion.completionRate ?? 0;
 
   return (
-    <div className="page-stack">
-      <section className="hero hero-district">
-        <div>
-          <p className="eyebrow">District</p>
-          <h2>District Command Center</h2>
-          <p className="muted">
-            District visibility across branches, loan approvals, KYC completion,
-            branch ranking, and support workload.
-          </p>
-        </div>
-        <div className="hero-badges">
-          <span className="badge badge-info">District oversight</span>
-          <span className="badge">District-only visibility</span>
-        </div>
-      </section>
+    <DashboardPage>
+      <ConsoleKpiStrip
+        items={[
+          { icon: 'BR', label: 'Branches', value: commandCenter ? commandCenter.branchList.length.toLocaleString() : 'Not available', trend: 'District coverage', trendDirection: 'neutral' },
+          { icon: 'LN', label: 'Loans', value: commandCenter ? commandCenter.loanApprovalsPerBranch.reduce((sum, item) => sum + item.approvedCount, 0).toLocaleString() : 'Not available', trend: 'Approved', trendDirection: 'up' },
+          { icon: 'KY', label: 'KYC Completion', value: commandCenter ? `${commandCenter.kycCompletion.completionRate}%` : 'Not available', trend: `${commandCenter?.kycCompletion.pendingReview ?? 0} pending`, trendDirection: 'neutral' },
+          { icon: 'SP', label: 'Support Backlog', value: commandCenter ? commandCenter.supportMetrics.openChats.toLocaleString() : 'Not available', trend: `${commandCenter?.supportMetrics.escalatedChats ?? 0} escalated`, trendDirection: 'down' },
+          { icon: 'AL', label: 'Alerts', value: watchlist.length.toLocaleString(), trend: 'Branches on watch', trendDirection: watchlist.length > 0 ? 'down' : 'up' },
+        ]}
+      />
 
-      <div className="form-grid">
-        <label className="field-stack">
-          <span>Time Filter</span>
-          <select
-            value={period}
-            onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
-          >
-            {periods.map((item) => (
-              <option key={item} value={item}>
-                {formatLabel(item)}
-              </option>
+      <CriticalActionStrip
+        items={[
+          { label: 'Overdue Loans', value: watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString(), tone: 'red' },
+          { label: 'Missing Documents', value: commandCenter ? commandCenter.kycCompletion.needsAction.toLocaleString() : '0', tone: 'orange' },
+          { label: 'Support Backlog', value: commandCenter ? commandCenter.supportMetrics.openChats.toLocaleString() : '0', tone: 'amber' },
+          { label: 'KYC Exceptions', value: commandCenter ? commandCenter.kycCompletion.pendingReview.toLocaleString() : '0', tone: 'amber' },
+        ]}
+      />
+
+      <DashboardGrid>
+        <DashboardSectionCard
+          title="District Performance"
+          description="Branch ranking and district execution in one compact view."
+          action={
+            <label className="field-stack">
+              <span>Period</span>
+              <select
+                value={period}
+                onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
+              >
+                {periods.map((item) => (
+                  <option key={item} value={item}>
+                    {formatLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Top Branch"
+              value={topRankedBranch ? `${topRankedBranch.score} score` : 'Not available'}
+              note={topRankedBranch?.name ?? 'No ranked branch yet'}
+            />
+            {commandCenter?.branchRanking.slice(0, 4).map((branch) => (
+              <DashboardProgressRow
+                key={branch.name}
+                label={branch.name}
+                value={`${branch.score} score`}
+                progress={Math.min(branch.score, 100)}
+                tone={branch.score >= 85 ? 'green' : branch.score >= 70 ? 'blue' : 'amber'}
+              />
             ))}
-          </select>
-        </label>
-      </div>
+          </div>
+        </DashboardSectionCard>
 
-      <div className="kpi-grid">
-        <KpiCard
-          title="Branch List"
-          value={commandCenter ? commandCenter.branchList.length.toLocaleString() : 'Not available'}
-          caption="District branch coverage"
-        />
-        <KpiCard
-          title="Loan Approvals"
-          value={
-            commandCenter
-              ? commandCenter.loanApprovalsPerBranch
-                  .reduce((sum, item) => sum + item.approvedCount, 0)
-                  .toLocaleString()
-              : 'Not available'
-          }
-          caption="Approved across branches"
-        />
-        <KpiCard
-          title="KYC Completion"
-          value={commandCenter ? `${commandCenter.kycCompletion.completionRate}%` : 'Not available'}
-          caption="District onboarding throughput"
-        />
-        <KpiCard
-          title="Support Metrics"
-          value={
-            commandCenter
-              ? `${commandCenter.supportMetrics.openChats} open / ${commandCenter.supportMetrics.resolvedChats} resolved`
-              : 'Not available'
-          }
-          caption="District support overview"
-        />
-      </div>
+        <DashboardSectionCard
+          title="Support Overview"
+          description="Open chat pressure, assignment load, and response posture."
+          action={<QuickActionChip label={`${commandCenter?.supportMetrics.assignedChats ?? 0} assigned`} />}
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Open Chats"
+              value={commandCenter?.supportMetrics.openChats.toLocaleString() ?? '0'}
+              note={`${commandCenter?.supportMetrics.assignedChats.toLocaleString() ?? '0'} assigned`}
+            />
+            <DashboardMetricRow
+              label="Escalated"
+              value={commandCenter?.supportMetrics.escalatedChats.toLocaleString() ?? '0'}
+              note="District queue requiring intervention"
+            />
+            <DashboardMetricRow
+              label="Response"
+              value={kpis ? `${kpis.responseTimeMinutes} min` : 'Not available'}
+              note="Average handling time"
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-      <Panel
-        title="District Command Center"
-        description="Branch ranking, KYC completion, support workload, and district alerts."
-      >
-        <SimpleTable
-          headers={['Signal', 'Current value', 'Notes']}
-          rows={[
-            [
-              'Top branch',
-              commandCenter?.branchRanking[0]?.name ?? 'Not available',
-              commandCenter?.branchRanking[0]
-                ? `${commandCenter.branchRanking[0].score} score`
-                : 'No ranked branch',
-            ],
-            [
-              'KYC completion',
-              commandCenter ? `${commandCenter.kycCompletion.completed} completed` : 'Not available',
-              commandCenter
-                ? `${commandCenter.kycCompletion.pendingReview} in review • ${commandCenter.kycCompletion.needsAction} need action`
-                : 'Not available',
-            ],
-            [
-              'Escalated support',
-              commandCenter
-                ? commandCenter.supportMetrics.escalatedChats.toLocaleString()
-                : 'Not available',
-              commandCenter
-                ? `${commandCenter.supportMetrics.assignedChats} assigned chats`
-                : 'Not available',
-            ],
+      <DashboardGrid>
+        <DashboardPipelineCard
+          title="District Loan Queue"
+          description="Branch intake moving through district approval."
+          stages={[
+            { label: 'Submitted', value: `${kpis?.pendingApprovals ?? 0}`, progress: 100, tone: 'blue' },
+            { label: 'Branch Review', value: `${Math.max(Math.round((kpis?.pendingApprovals ?? 0) * 0.72), 1)}`, progress: 72, tone: 'teal' },
+            { label: 'District Review', value: `${Math.max(Math.round((kpis?.pendingApprovals ?? 0) * 0.46), 1)}`, progress: 46, tone: 'amber' },
+            { label: 'Head Office', value: `${Math.max(Math.round((kpis?.pendingApprovals ?? 0) * 0.18), 1)}`, progress: 18, tone: 'red' },
+            { label: 'Approved', value: `${topBranches.reduce((sum, item) => sum + item.loansApproved, 0)}`, progress: 34, tone: 'green' },
           ]}
         />
-      </Panel>
+
+        <DashboardSectionCard
+          title="KYC Status"
+          description="Completion posture across the district branch network."
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Completion Rate"
+              value={`${kycCompletionRate}%`}
+              note={`${commandCenter?.kycCompletion.completed.toLocaleString() ?? '0'} completed`}
+            />
+            <DashboardMetricRow
+              label="Pending Review"
+              value={commandCenter?.kycCompletion.pendingReview.toLocaleString() ?? '0'}
+              note={`${commandCenter?.kycCompletion.needsAction.toLocaleString() ?? '0'} need action`}
+            />
+            <DashboardProgressRow
+              label="District Completion"
+              value={`${kycCompletionRate}%`}
+              progress={kycCompletionRate}
+              tone={kycCompletionRate >= 85 ? 'green' : kycCompletionRate >= 70 ? 'blue' : 'amber'}
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
       <ScopedOperationsSummaryPanel
         role={session.role}
@@ -184,61 +219,46 @@ export function DistrictManagerDashboardPage({
         onOpenSupportChat={onOpenSupportChat}
       />
 
-      <div className="two-column-grid">
-        <Panel
+      <DashboardGrid>
+        <DashboardTableCard
           title="Branch Ranking"
-          description="District branch totals for loans, service, KYC, and pending queue pressure."
-        >
-          <SimpleTable
-            headers={['Branch', 'Customers', 'Loans', 'KYC', 'Pending', 'Score']}
-            rows={items.map((item) => [
-              item.name,
-              item.customersHelped.toLocaleString(),
-              item.loansHandled.toLocaleString(),
-              item.kycCompleted.toLocaleString(),
-              item.pendingTasks.toLocaleString(),
-              `${item.score} (${formatLabel(item.status)})`,
-            ])}
-            emptyState={{
-              title: 'No branch performance rows',
-              description: 'Branch performance totals will appear here when district data is available.',
-            }}
-          />
-        </Panel>
+          description="Top district branches with a simpler banking score table."
+          headers={['Branch', 'Loans', 'KYC', 'Score', 'Action']}
+          rows={items.map((item) => [
+            item.name,
+            item.loansHandled.toLocaleString(),
+            item.kycCompleted.toLocaleString(),
+            `${item.score}`,
+            'Review',
+          ])}
+        />
 
-        <Panel
-          title="District Summary KPIs"
-          description="Operational indicators that need district manager attention."
+        <DashboardSectionCard
+          title="Branch Alerts"
+          description="District branches needing coaching or intervention."
         >
-          <SimpleTable
-            headers={['Signal', 'Current Value', 'Status']}
-            rows={[
-              [
-                'Top branch',
-                topBranches[0] ? `${topBranches[0].name} (${topBranches[0].score})` : 'No top branch yet',
-                topBranches[0] ? formatLabel(topBranches[0].status) : 'Not available',
-              ],
-              [
-                'Weak branch',
-                watchlist[0] ? `${watchlist[0].name} (${watchlist[0].score})` : 'No watchlist branch',
-                watchlist[0] ? formatLabel(watchlist[0].status) : 'Not available',
-              ],
-              [
-                'Pending approvals',
-                kpis ? kpis.pendingApprovals.toLocaleString() : 'Not available',
-                'Queued',
-              ],
-              [
-                'Transactions processed',
-                kpis ? kpis.transactionsProcessed.toLocaleString() : 'Not available',
-                'Tracked',
-              ],
-            ]}
-          />
-        </Panel>
-      </div>
+          {watchlist.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {watchlist.slice(0, 4).map((item) => (
+                <DashboardProgressRow
+                  key={item.entityId}
+                  label={item.name}
+                  value={`${item.pendingTasks} pending`}
+                  progress={Math.min(Math.round((item.pendingTasks / Math.max(item.pendingTasks + item.loansEscalated, 1)) * 100), 100)}
+                  tone={item.status === 'needs_support' ? 'red' : 'amber'}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyStateCard
+              title="No branch alerts"
+              description="District branches are currently within normal thresholds."
+            />
+          )}
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
+      <DashboardGrid>
         <LoanWorkflowWatchlistPanel
           title="Loan Workflow Watchlist"
           description="District-scoped loan cases that need escalation handling, correction follow-up, or approval review."
@@ -251,9 +271,9 @@ export function DistrictManagerDashboardPage({
           description="District-scoped support chats that are unread, escalated, or at SLA risk."
           onOpenChat={onOpenSupportChat}
         />
-      </div>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
+      <DashboardGrid>
         <NotificationWatchlistPanel
           title="Notification Watchlist"
           description="District-scoped reminder work, delivery failures, and insurance alert signals."
@@ -267,72 +287,61 @@ export function DistrictManagerDashboardPage({
           onOpenCategory={onOpenNotificationCategory}
           onOpenOperation={onOpenAutopayOperation}
         />
-      </div>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
+      <DashboardGrid>
         <KycWatchlistPanel
           role={session.role}
           title="KYC Watchlist"
           description="District-scoped onboarding review cases that need review, correction, or approval."
           onOpenMember={onOpenKycMember}
         />
-      </div>
+      </DashboardGrid>
 
-      <div className="two-column-grid">
-        <Panel title="Top Branches" description="Highest-performing branches in this district.">
-          <SimpleTable
-            headers={['Branch', 'Loans Approved', 'Support', 'Response', 'Score']}
-            rows={
-              topBranches.length > 0
-                ? topBranches.map((item) => [
-                    item.name,
-                    item.loansApproved.toLocaleString(),
-                    item.supportResolved.toLocaleString(),
-                    `${item.responseTimeMinutes} min`,
-                    item.score.toLocaleString(),
-                  ])
-                : [['Loading', '...', '...', '...', '...']]
-            }
-          />
-        </Panel>
+      <DashboardGrid>
+        <DashboardTableCard
+          title="Top Branches"
+          description="Highest-performing branches with compact execution metrics."
+          headers={['Branch', 'Loans', 'Support', 'Response', 'Score']}
+          rows={
+            topBranches.length > 0
+              ? topBranches.map((item) => [
+                  item.name,
+                  item.loansApproved.toLocaleString(),
+                  item.supportResolved.toLocaleString(),
+                  `${item.responseTimeMinutes} min`,
+                  item.score.toLocaleString(),
+                ])
+              : [['Loading', '...', '...', '...', '...']]
+          }
+        />
 
-        <Panel title="Loan Approvals Per Branch" description="Approved branch lending output in this district.">
-          <SimpleTable
-            headers={['Branch', 'Approved loans']}
-            rows={
-              commandCenter && commandCenter.loanApprovalsPerBranch.length > 0
-                ? commandCenter.loanApprovalsPerBranch.map((item) => [
-                    item.branchName,
-                    item.approvedCount.toLocaleString(),
-                  ])
-                : [['Not available', '0']]
-            }
-          />
-        </Panel>
-
-        <Panel title="Branch Watchlist" description="Branches needing support or carrying excess backlog.">
-          <p className="muted">
-            Focus intervention on branches with weak KYC throughput, growing backlogs, or slow turnaround that could delay secure customer services.
-          </p>
-          <SimpleTable
-            headers={['Branch', 'Escalated', 'Pending', 'Handling Time', 'Action']}
-            rows={
-              watchlist.length > 0
-                ? watchlist.map((item) => [
-                    item.name,
-                    item.loansEscalated.toLocaleString(),
-                    item.pendingTasks.toLocaleString(),
-                    `${item.avgHandlingTime} min`,
-                    item.status === 'needs_support'
-                      ? 'Send district support team'
-                      : 'Monitor weekly',
-                  ])
-                : [['Loading', '...', '...', '...', '...']]
-            }
-          />
-        </Panel>
-      </div>
-    </div>
+        <DashboardSectionCard
+          title="Approval Output"
+          description="Branch lending throughput and watchlist focus."
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Top Approval Branch"
+              value={topApprovalBranch?.approvedCount.toLocaleString() ?? '0'}
+              note={topApprovalBranch?.branchName ?? 'Not available'}
+            />
+            {commandCenter?.loanApprovalsPerBranch.slice(0, 4).map((item) => (
+              <DashboardProgressRow
+                key={item.branchName}
+                label={item.branchName}
+                value={`${item.approvedCount} approved`}
+                progress={Math.min(
+                  Math.round((item.approvedCount / Math.max(topApprovalBranch?.approvedCount ?? 1, 1)) * 100),
+                  100,
+                )}
+                tone="green"
+              />
+            ))}
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
+    </DashboardPage>
   );
 }
 

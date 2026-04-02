@@ -13,8 +13,14 @@ import type {
 import { getManagerConsoleKind, type AdminSession } from '../../core/session';
 import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
-import { Panel } from '../../shared/components/Panel';
-import { SimpleTable } from '../../shared/components/SimpleTable';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardSectionCard,
+  DashboardTableCard,
+  QuickActionChip,
+} from '../../shared/components/BankingDashboard';
 
 import { AMHARA_LOGO_DATA_URL } from './amharaLogoData';
 
@@ -253,23 +259,7 @@ export function ManagerNotificationCenterPage({
   }
 
   return (
-    <div className="page-stack console-card-page">
-      <section className="hero hero-head-office">
-        <div>
-          <p className="eyebrow">Notification Center</p>
-          <h2>Manager-controlled reminders across loans, KYC, insurance, and AutoPay</h2>
-          <p className="muted">
-            Category-driven reminder campaigns with Email, SMS, Telegram, and in-app
-            tracking. Telegram reminders are sent only to customers who have connected
-            the Amhara Bank Telegram bot.
-          </p>
-        </div>
-        <div className="hero-badges">
-          <span className="badge badge-info">{scopeLabel}</span>
-          <span className="badge">Manual reminder review and delivery controls</span>
-        </div>
-      </section>
-
+    <DashboardPage>
       {returnContextLabel && onReturnToContext ? (
         <div className="loan-return-banner">
           <div>
@@ -304,10 +294,11 @@ export function ManagerNotificationCenterPage({
         ]}
       />
 
-      <div className="console-card-grid">
-        <Panel
+      <DashboardGrid>
+        <DashboardSectionCard
           title="Create Reminder Campaign"
           description="Choose category, template, channels, target scope, preview, and send."
+          action={<QuickActionChip label={scopeLabel} />}
         >
           <div className="form-grid">
             <label className="field-stack">
@@ -480,88 +471,85 @@ export function ManagerNotificationCenterPage({
               {isSending ? 'Sending Reminder...' : 'Send Reminder'}
             </button>
           </div>
-        </Panel>
+        </DashboardSectionCard>
 
-        <Panel
-          title="Recent Notification Activity"
-          description="Review the latest sent alerts and jump into linked workflows when the notification carries a target."
+        <DashboardSectionCard
+          title="Notification Overview"
+          description="Delivery health, insurance pressure, and reminder workload."
         >
-          <SimpleTable
-            headers={['Type', 'Recipient', 'Status', 'Sent', 'Action']}
-            rows={recentNotifications.map((item) => [
-              formatLabel(item.type),
-              item.userLabel,
-              formatLabel(item.status),
-              item.sentAt,
-              renderNotificationAction(item, onOpenPaymentReceipts),
-            ])}
-            emptyState={{
-              title: 'No recent notifications yet',
-              description: 'Recent member and staff notification activity will appear here when in-app alerts are created.',
-            }}
-          />
-        </Panel>
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Push Sent Today"
+              value={campaigns.filter((item) => item.channels.includes('mobile_push')).length.toLocaleString()}
+              note="Campaigns using in-app delivery"
+            />
+            <DashboardMetricRow
+              label="Email Sent Today"
+              value={campaigns.filter((item) => item.channels.includes('email')).length.toLocaleString()}
+              note={`${logs.filter((item) => item.status === 'failed').length.toLocaleString()} failed deliveries`}
+            />
+            <DashboardMetricRow
+              label="Insurance Alerts"
+              value={alertsNeedingAction.toLocaleString()}
+              note={`${alerts.length.toLocaleString()} total insurance cases`}
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-        <Panel
+      <DashboardGrid>
+        <DashboardTableCard
+          title="Recent Notification Activity"
+          description="Latest sent alerts with workflow jump actions."
+          headers={['Type', 'Recipient', 'Status', 'Sent', 'Action']}
+          rows={recentNotifications.map((item) => [
+            formatLabel(item.type),
+            item.userLabel,
+            formatLabel(item.status),
+            item.sentAt,
+            renderNotificationAction(item, onOpenPaymentReceipts),
+          ])}
+        />
+
+        <DashboardTableCard
           title="Insurance Alerts"
           description="Expiring, expired, and missing loan-linked insurance coverage."
-        >
-          <SimpleTable
-            headers={['Customer', 'Alert', 'Policy', 'Action']}
-            rows={alerts.map((item) => [
-              `${item.memberName} (${item.customerId})`,
-              formatLabel(item.alertType),
-              item.policyNumber ?? 'No linked policy',
-              item.requiresManagerAction ? 'Review now' : 'Monitor',
-            ])}
-            emptyState={{
-              title: 'No insurance alerts in this scope',
-              description: 'There are no expiring or missing insurance cases requiring review right now.',
-            }}
-          />
-        </Panel>
-      </div>
+          headers={['Customer', 'Alert', 'Policy', 'Action']}
+          rows={alerts.map((item) => [
+            `${item.memberName} (${item.customerId})`,
+            formatLabel(item.alertType),
+            item.policyNumber ?? 'No linked policy',
+            item.requiresManagerAction ? 'Review now' : 'Monitor',
+          ])}
+        />
+      </DashboardGrid>
 
-      <div className="console-card-grid">
-        <Panel
+      <DashboardGrid>
+        <DashboardTableCard
           title="Campaigns"
           description="Manual reminder campaigns with current send state."
-        >
-          <SimpleTable
-            headers={['Category', 'Template', 'Channels', 'Status']}
-            rows={campaigns.map((item) => [
-              formatLabel(item.category),
-              formatLabel(item.templateType),
-              item.channels.map(formatLabel).join(', '),
-              formatLabel(item.status),
-            ])}
-            emptyState={{
-              title: 'No reminder campaigns yet',
-              description: 'Create a campaign to start delivery tracking for this notification scope.',
-            }}
-          />
-        </Panel>
+          headers={['Category', 'Template', 'Channels', 'Status']}
+          rows={campaigns.map((item) => [
+            formatLabel(item.category),
+            formatLabel(item.templateType),
+            item.channels.map(formatLabel).join(', '),
+            formatLabel(item.status),
+          ])}
+        />
 
-        <Panel
+        <DashboardTableCard
           title="Delivery Logs"
           description="Per-recipient delivery result tracking across channels."
-        >
-          <SimpleTable
-            headers={['Channel', 'Recipient', 'Status', 'Error']}
-            rows={logs.map((item) => [
-              formatLabel(item.channel),
-              item.recipient,
-              formatLabel(item.status),
-              item.errorMessage ?? 'No error',
-            ])}
-            emptyState={{
-              title: 'No delivery events yet',
-              description: 'Delivery results will appear here after a reminder campaign is sent.',
-            }}
-          />
-        </Panel>
-      </div>
-    </div>
+          headers={['Channel', 'Recipient', 'Status', 'Error']}
+          rows={logs.map((item) => [
+            formatLabel(item.channel),
+            item.recipient,
+            formatLabel(item.status),
+            item.errorMessage ?? 'No error',
+          ])}
+        />
+      </DashboardGrid>
+    </DashboardPage>
   );
 }
 

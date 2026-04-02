@@ -1,3 +1,5 @@
+import { DashboardAlertCard } from './BankingDashboard';
+
 type CriticalActionItem = {
   label: string;
   value: string;
@@ -7,17 +9,15 @@ type CriticalActionItem = {
 
 export function CriticalActionStrip({ items }: { items: CriticalActionItem[] }) {
   return (
-    <section className="critical-action-strip">
+    <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
-        <button
+        <DashboardAlertCard
           key={item.label}
-          type="button"
-          className={`critical-alert-chip ${item.tone}`}
+          label={item.label}
+          value={item.value}
+          tone={item.tone}
           onClick={item.onClick}
-        >
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-        </button>
+        />
       ))}
     </section>
   );

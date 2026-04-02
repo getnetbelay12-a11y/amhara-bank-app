@@ -16,6 +16,15 @@ import type {
 import type { AdminSession } from '../../core/session';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardPipelineCard,
+  DashboardProgressRow,
+  DashboardSectionCard,
+  QuickActionChip,
+} from '../../shared/components/BankingDashboard';
 import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
 import { AuditWatchlistPanel } from '../audit/AuditWatchlistPanel';
@@ -167,7 +176,7 @@ export function HeadOfficeManagerDashboardPage({
     null;
 
   return (
-    <div className="page-stack head-office-page">
+    <DashboardPage>
       <ConsoleKpiStrip
         items={[
           {
@@ -239,193 +248,145 @@ export function HeadOfficeManagerDashboardPage({
         ]}
       />
 
-      <section className="bank-dashboard-grid">
-        <Panel title="District Performance" description="Top districts with response and approval posture.">
-          <div className="mini-table-list">
+      <DashboardGrid>
+        <DashboardSectionCard
+          title="District Performance"
+          description="Top districts with response and approval posture."
+          action={<QuickActionChip label={`${filteredItems.length} in scope`} />}
+        >
+          <div className="flex flex-col gap-3">
             {filteredItems.slice(0, 5).map((item) => (
-              <button
+              <DashboardProgressRow
                 key={item.entityId}
-                type="button"
-                className="mini-table-row"
-                onClick={() => setSelectedDistrictId(item.entityId)}
-              >
-                <strong>{item.name}</strong>
-                <span>{item.score} score</span>
-                <span>{item.responseTimeMinutes} min</span>
-                <div className="table-progress-track">
-                  <div className="table-progress-fill" style={{ width: `${item.score}%` }} />
-                </div>
-                <span className="mini-table-action">Review</span>
-              </button>
+                label={item.name}
+                value={`${item.score} score • ${item.responseTimeMinutes} min`}
+                progress={Math.min(item.score, 100)}
+                tone={item.status === 'needs_support' ? 'red' : item.status === 'watch' ? 'amber' : 'blue'}
+              />
             ))}
           </div>
-        </Panel>
+        </DashboardSectionCard>
 
-        <Panel title="Support Overview" description="Backlog, escalation pressure, and live chat posture.">
-          <div className="support-overview-stack">
-            <div className="dashboard-summary-strip dashboard-summary-strip-dense">
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Open chats</span>
-                <strong>{commandCenter?.supportOverview.openChats.toLocaleString() ?? '0'}</strong>
-              </div>
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Escalated</span>
-                <strong>{commandCenter?.supportOverview.escalatedChats.toLocaleString() ?? '0'}</strong>
-              </div>
-            </div>
-            <div className="mini-table-list">
-              {openChats.slice(0, 4).map((chat) => (
-                <button
-                  key={chat.conversationId}
-                  type="button"
-                  className="mini-table-row"
-                  onClick={() => onOpenSupportChat?.(chat.conversationId)}
-                >
-                  <strong>{chat.memberName ?? chat.customerId}</strong>
-                  <span>{chat.issueCategory}</span>
-                  <span>{formatLabel(chat.status)}</span>
-                  <div className="table-progress-track">
-                    <div
-                      className="table-progress-fill"
-                      style={{ width: `${chat.escalationFlag ? 92 : chat.priority === 'high' ? 78 : 56}%` }}
-                    />
-                  </div>
-                  <span className="mini-table-action">Open</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Panel>
-
-        <Panel title="Loan Pipeline" description="Clear stage-by-stage loan flow across the bank.">
-          <div className="loan-pipeline-dashboard">
-            {loanPipeline.map((stage) => (
-              <div key={stage.label} className="loan-pipeline-dashboard-stage">
-                <div className="loan-pipeline-dashboard-meta">
-                  <span>{stage.label}</span>
-                  <strong>{stage.value.toLocaleString()}</strong>
-                </div>
-                <div className="table-progress-track">
-                  <div className={`table-progress-fill ${stage.tone}`} style={{ width: `${stage.width}%` }} />
-                </div>
-              </div>
+        <DashboardSectionCard
+          title="Support Overview"
+          description="Backlog, escalation pressure, and live chat posture."
+          action={<QuickActionChip label="Open support" onClick={onOpenSupportWorkspace} />}
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Open Chats"
+              value={commandCenter?.supportOverview.openChats.toLocaleString() ?? '0'}
+              note={`${commandCenter?.supportOverview.escalatedChats.toLocaleString() ?? '0'} escalated`}
+            />
+            <DashboardMetricRow
+              label="Assigned"
+              value={openChats.length.toLocaleString()}
+              note={`${unansweredChatsCount.toLocaleString()} unresolved`}
+            />
+            {openChats.slice(0, 3).map((chat) => (
+              <DashboardProgressRow
+                key={chat.conversationId}
+                label={chat.memberName ?? chat.customerId}
+                value={formatLabel(chat.status)}
+                progress={chat.escalationFlag ? 92 : chat.priority === 'high' ? 78 : 56}
+                tone={chat.escalationFlag ? 'red' : chat.priority === 'high' ? 'amber' : 'blue'}
+              />
             ))}
           </div>
-        </Panel>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-        <Panel title="KYC Status" description="Pending onboarding and document completion posture.">
-          <div className="kyc-status-card">
-            <div className="dashboard-summary-strip dashboard-summary-strip-dense">
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Completed</span>
-                <strong>{kpis?.kycCompleted.toLocaleString() ?? '0'}</strong>
-              </div>
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Pending</span>
-                <strong>{kycQueueCount.toLocaleString()}</strong>
-              </div>
-            </div>
-            <div className="institution-health-row">
-              <div>
-                <strong>KYC completion rate</strong>
-                <p className="muted">
-                  {kpis && kpis.membersServed > 0
-                    ? `${Math.round((kpis.kycCompleted / kpis.membersServed) * 100)}% of served members`
-                    : 'Not available'}
-                </p>
-              </div>
-              <div className="institution-health-meter warning">
-                <span
-                  style={{
-                    width: `${Math.min(((kpis?.kycCompleted ?? 0) / Math.max(kpis?.membersServed ?? 1, 1)) * 100, 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
+      <DashboardGrid>
+        <DashboardPipelineCard
+          title="Loan Pipeline"
+          description="Clear stage-by-stage loan flow across the bank."
+          stages={loanPipeline.map((stage) => ({
+            label: stage.label,
+            value: stage.value.toLocaleString(),
+            progress: stage.width,
+            tone:
+              stage.tone === 'warning'
+                ? 'amber'
+                : stage.tone === 'teal'
+                  ? 'teal'
+                  : stage.tone === 'success'
+                    ? 'green'
+                    : 'blue',
+          }))}
+        />
+
+        <DashboardSectionCard
+          title="KYC Status"
+          description="Pending onboarding and document completion posture."
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Completed"
+              value={kpis?.kycCompleted.toLocaleString() ?? '0'}
+              note={`${kycQueueCount.toLocaleString()} pending review`}
+            />
+            <DashboardProgressRow
+              label="Completion Rate"
+              value={
+                kpis && kpis.membersServed > 0
+                  ? `${Math.round((kpis.kycCompleted / kpis.membersServed) * 100)}%`
+                  : 'Not available'
+              }
+              progress={Math.min(((kpis?.kycCompleted ?? 0) / Math.max(kpis?.membersServed ?? 1, 1)) * 100, 100)}
+              tone={kycQueueCount > 40 ? 'amber' : 'green'}
+            />
           </div>
-        </Panel>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-        <Panel title="School Payments" description="Student billing posture and reminder workflow.">
-          <div className="school-payment-card">
-            <div className="dashboard-summary-strip dashboard-summary-strip-dense">
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Students</span>
-                <strong>{schoolOverview?.summary.students.toLocaleString() ?? '0'}</strong>
-              </div>
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Paid Today</span>
-                <strong>{paidSchoolInvoicesCount.toLocaleString()}</strong>
-              </div>
-              <div className="dashboard-summary-chip">
-                <span className="dashboard-summary-label">Overdue</span>
-                <strong>{overdueSchoolInvoicesCount.toLocaleString()}</strong>
-              </div>
-            </div>
-            <div className="school-payment-balance">
-              <div className="school-payment-balance-bar paid" style={{ flex: Math.max(paidSchoolInvoicesCount, 1) }} />
-              <div className="school-payment-balance-bar unpaid" style={{ flex: Math.max(unpaidSchoolInvoicesCount, 1) }} />
-              <div className="school-payment-balance-bar overdue" style={{ flex: Math.max(overdueSchoolInvoicesCount, 1) }} />
-            </div>
-            <button
-              type="button"
-              className="head-office-command-button"
-              onClick={() => onOpenNotificationCategory?.('payment')}
-            >
-              Send Reminder
-            </button>
+      <DashboardGrid>
+        <DashboardSectionCard
+          title="School Payments"
+          description="Student billing posture and reminder workflow."
+          action={<QuickActionChip label="Send reminder" onClick={() => onOpenNotificationCategory?.('payment')} />}
+        >
+          <div className="flex flex-col gap-3">
+            <DashboardMetricRow
+              label="Students"
+              value={schoolOverview?.summary.students.toLocaleString() ?? '0'}
+              note={`${paidSchoolInvoicesCount.toLocaleString()} paid today`}
+            />
+            <DashboardProgressRow
+              label="Paid vs Unpaid"
+              value={`${overdueSchoolInvoicesCount.toLocaleString()} overdue`}
+              progress={(paidSchoolInvoicesCount / Math.max(paidSchoolInvoicesCount + unpaidSchoolInvoicesCount, 1)) * 100}
+              tone={overdueSchoolInvoicesCount > 0 ? 'amber' : 'green'}
+            />
           </div>
-        </Panel>
+        </DashboardSectionCard>
 
-        <Panel title="Performance Summary" description="Visual branch execution bars instead of dense text.">
-          <div className="performance-summary-list">
+        <DashboardSectionCard
+          title="Performance Summary"
+          description="Visual branch execution bars instead of dense text."
+        >
+          <div className="flex flex-col gap-3">
             {branchPerformance.slice(0, 4).map((item) => (
-              <div key={item.scopeId} className="performance-summary-row">
-                <strong>{formatLabel(item.scopeId)}</strong>
-                <div className="performance-summary-bars">
-                  <div>
-                    <span>Loans</span>
-                    <div className="table-progress-track">
-                      <div
-                        className="table-progress-fill"
-                        style={{ width: `${Math.min((item.loanApprovedCount / 50) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <span>KYC</span>
-                    <div className="table-progress-track">
-                      <div
-                        className="table-progress-fill teal"
-                        style={{ width: `${Math.min((item.customersServed / 600) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <span>Support</span>
-                    <div className="table-progress-track">
-                      <div
-                        className="table-progress-fill warning"
-                        style={{ width: `${Math.min((item.schoolPaymentsCount / 250) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <span className="performance-summary-score">
-                  {Math.min(
-                    Math.round(
-                      ((item.loanApprovedCount + item.schoolPaymentsCount + item.customersServed / 10) /
-                        120) *
-                        100,
-                    ),
-                    99,
-                  )}
-                  %
-                </span>
-              </div>
+              <DashboardProgressRow
+                key={item.scopeId}
+                label={formatLabel(item.scopeId)}
+                value={`${Math.min(
+                  Math.round(
+                    ((item.loanApprovedCount + item.schoolPaymentsCount + item.customersServed / 10) / 120) * 100,
+                  ),
+                  99,
+                )}% score`}
+                progress={Math.min(
+                  Math.round(
+                    ((item.loanApprovedCount + item.schoolPaymentsCount + item.customersServed / 10) / 120) * 100,
+                  ),
+                  99,
+                )}
+                tone="blue"
+              />
             ))}
           </div>
-        </Panel>
-      </section>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
       {activeView === 'operations' ? (
       <section className="dashboard-section-block dashboard-section-operations">
@@ -862,7 +823,7 @@ export function HeadOfficeManagerDashboardPage({
           {openChats.length === 0 ? <div className="live-chat-empty">No live chats waiting.</div> : null}
         </div>
       </aside>
-    </div>
+    </DashboardPage>
   );
 }
 

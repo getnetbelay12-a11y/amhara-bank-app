@@ -4,6 +4,7 @@ import { useAppClient } from '../../app/AppContext';
 import type { LoanCustomerProfile, LoanQueueDetail } from '../../core/api/contracts';
 import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
+import { DashboardPage } from '../../shared/components/BankingDashboard';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
 import { RecommendationPanel } from '../recommendations/RecommendationPanel';
@@ -273,7 +274,7 @@ export function LoanMonitoringPage({
   }
 
   return (
-    <div className="page-stack console-card-page">
+    <DashboardPage>
       <RecommendationPanel
         memberId={selectedLoan?.memberId ?? ''}
         compact
@@ -695,7 +696,7 @@ export function LoanMonitoringPage({
           }}
         />
       </Panel>
-    </div>
+    </DashboardPage>
   );
 }
 

@@ -5,8 +5,14 @@ import type { CreateVotePayload, VoteAdminItem, VoteResultItem, VotingSummaryIte
 import { AdminRole, type AdminSession } from '../../core/session';
 import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
-import { Panel } from '../../shared/components/Panel';
-import { SimpleTable } from '../../shared/components/SimpleTable';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardSectionCard,
+  DashboardTableCard,
+  QuickActionChip,
+} from '../../shared/components/BankingDashboard';
 
 type VotingManagementPageProps = {
   session: AdminSession;
@@ -143,7 +149,7 @@ export function VotingManagementPage({
   }
 
   return (
-    <div className="page-stack console-card-page">
+    <DashboardPage>
       {returnContextLabel && onReturnToContext ? (
         <div className="loan-return-banner">
           <div>
@@ -174,32 +180,21 @@ export function VotingManagementPage({
         ]}
       />
 
-      <Panel
+      <DashboardSectionCard
         title="Voting & Governance"
         description="Head office governance console for shareholder voting, turnout tracking, and result review."
+        action={<QuickActionChip label={selectedVote ? capitalize(selectedVote.status) : 'No active vote'} />}
       >
-        <div className="dashboard-summary-strip">
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Active voting</span>
-            <strong>{activeVotingCount.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Total shareholders</span>
-            <strong>{totalShareholders.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Votes cast</span>
-            <strong>{votesCast.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Participation rate</span>
-            <strong>{participationRate.toFixed(0)}%</strong>
-          </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <DashboardMetricRow label="Active Voting" value={activeVotingCount.toLocaleString()} />
+          <DashboardMetricRow label="Total Shareholders" value={totalShareholders.toLocaleString()} />
+          <DashboardMetricRow label="Votes Cast" value={votesCast.toLocaleString()} />
+          <DashboardMetricRow label="Participation" value={`${participationRate.toFixed(0)}%`} />
         </div>
-      </Panel>
+      </DashboardSectionCard>
 
-      <div className="console-card-grid">
-      <Panel title="Create Voting Event" description="Create a vote with schedule and options in one head-office workflow.">
+      <DashboardGrid>
+      <DashboardSectionCard title="Create Voting Event" description="Create a vote with schedule and options in one head-office workflow.">
         <div className="support-detail-grid">
           <label>
             <span>Title</span>
@@ -236,10 +231,12 @@ export function VotingManagementPage({
           </button>
           {message ? <span className="muted">{message}</span> : null}
         </div>
-      </Panel>
+      </DashboardSectionCard>
 
-      <Panel title="Voting Control" description="Open, close, and review governance events with head-office access controls.">
-        <SimpleTable
+      <DashboardSectionCard title="Voting Control" description="Open, close, and review governance events with head-office access controls.">
+        <DashboardTableCard
+          title="Vote Queue"
+          description="Governance items in scope."
           headers={['Vote', 'Status', 'Votes Cast', 'Participation', 'Action']}
           rows={votes.map((vote) => [
             <button key={`${vote.voteId}-link`} type="button" className="ghost-button" onClick={() => setSelectedVoteId(vote.voteId)}>
@@ -254,10 +251,6 @@ export function VotingManagementPage({
                 ? 'Monitor or close'
                 : 'View final results',
           ])}
-          emptyState={{
-            title: 'No governance votes in scope',
-            description: 'Voting events will appear here for head office governance staff.',
-          }}
         />
         {selectedVote ? (
           <div className="page-actions">
@@ -279,46 +272,38 @@ export function VotingManagementPage({
             </button>
           </div>
         ) : null}
-      </Panel>
-      </div>
+      </DashboardSectionCard>
+      </DashboardGrid>
 
-      <div className="page-grid two-column">
-        <Panel title="Participation Tracking" description="Branch and district turnout for the selected voting event.">
-          <div className="dashboard-summary-strip">
-            <div className="dashboard-summary-chip">
-              <span className="dashboard-summary-label">Responses</span>
-              <strong>{participation?.totalResponses?.toLocaleString() ?? '0'}</strong>
-            </div>
-            <div className="dashboard-summary-chip">
-              <span className="dashboard-summary-label">Branches</span>
-              <strong>{participation?.uniqueBranches?.toLocaleString() ?? '0'}</strong>
-            </div>
-            <div className="dashboard-summary-chip">
-              <span className="dashboard-summary-label">Districts</span>
-              <strong>{participation?.uniqueDistricts?.toLocaleString() ?? '0'}</strong>
-            </div>
+      <DashboardGrid>
+        <DashboardSectionCard title="Participation Tracking" description="Branch and district turnout for the selected voting event.">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <DashboardMetricRow label="Responses" value={participation?.totalResponses?.toLocaleString() ?? '0'} />
+            <DashboardMetricRow label="Branches" value={participation?.uniqueBranches?.toLocaleString() ?? '0'} />
+            <DashboardMetricRow label="Districts" value={participation?.uniqueDistricts?.toLocaleString() ?? '0'} />
           </div>
-          <SimpleTable
-            headers={['Branch', 'Votes']}
-            rows={(participation?.branchParticipation ?? []).map((item) => [item.name, item.totalResponses.toLocaleString()])}
-            emptyState={{ title: 'No branch participation yet', description: 'Branch turnout appears here after votes are cast.' }}
-          />
-          <SimpleTable
-            headers={['District', 'Votes']}
-            rows={(participation?.districtParticipation ?? []).map((item) => [item.name, item.totalResponses.toLocaleString()])}
-            emptyState={{ title: 'No district participation yet', description: 'District turnout appears here after votes are cast.' }}
-          />
-        </Panel>
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <DashboardTableCard
+              title="Branch Turnout"
+              headers={['Branch', 'Votes']}
+              rows={(participation?.branchParticipation ?? []).map((item) => [item.name, item.totalResponses.toLocaleString()])}
+            />
+            <DashboardTableCard
+              title="District Turnout"
+              headers={['District', 'Votes']}
+              rows={(participation?.districtParticipation ?? []).map((item) => [item.name, item.totalResponses.toLocaleString()])}
+            />
+          </div>
+        </DashboardSectionCard>
 
-        <Panel title="Results View" description="Votes per option and result percentages for the selected event.">
-          <SimpleTable
-            headers={['Option', 'Votes', 'Percentage']}
-            rows={results.map((item) => [item.optionName, item.votes.toLocaleString(), `${item.percentage.toFixed(2)}%`])}
-            emptyState={{ title: 'No results available', description: 'Results will appear here when the event has responses or is closed.' }}
-          />
-        </Panel>
-      </div>
-    </div>
+        <DashboardTableCard
+          title="Results View"
+          description="Votes per option and result percentages for the selected event."
+          headers={['Option', 'Votes', 'Percentage']}
+          rows={results.map((item) => [item.optionName, item.votes.toLocaleString(), `${item.percentage.toFixed(2)}%`])}
+        />
+      </DashboardGrid>
+    </DashboardPage>
   );
 }
 

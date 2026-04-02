@@ -1,3 +1,5 @@
+import { DashboardKpiCard } from './BankingDashboard';
+
 type ConsoleKpiItem = {
   icon: string;
   label: string;
@@ -8,29 +10,17 @@ type ConsoleKpiItem = {
 
 export function ConsoleKpiStrip({ items }: { items: ConsoleKpiItem[] }) {
   return (
-    <section className="console-kpi-strip">
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {items.map((item) => (
-        <article key={item.label} className="console-kpi-card">
-          <div className="console-kpi-card-top">
-            <span className="console-kpi-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span
-              className={`console-kpi-trend ${item.trendDirection ?? 'neutral'}`}
-            >
-              {item.trendDirection === 'down'
-                ? 'v'
-                : item.trendDirection === 'up'
-                  ? '^'
-                  : '-'}{' '}
-              {item.trend}
-            </span>
-          </div>
-          <strong>{item.value}</strong>
-          <span className="dashboard-summary-label">{item.label}</span>
-        </article>
+        <DashboardKpiCard
+          key={item.label}
+          icon={item.icon}
+          label={item.label}
+          value={item.value}
+          trend={item.trend}
+          trendDirection={item.trendDirection}
+        />
       ))}
     </section>
   );
 }
-

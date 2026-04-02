@@ -60,6 +60,7 @@ body {
   background:
     radial-gradient(circle at top left, rgba(14, 165, 163, 0.12), transparent 24%),
     linear-gradient(180deg, #f8fcfd 0%, var(--amhara-primary-wash) 100%);
+  color: var(--amhara-text);
 }
 
 button,
@@ -73,8 +74,8 @@ textarea {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 292px 1fr;
-  gap: 18px;
-  padding: 18px;
+  gap: 16px;
+  padding: 16px;
 }
 
 .sidebar {
@@ -321,20 +322,20 @@ textarea {
 }
 
 .content {
-  padding: 0 6px 24px;
+  padding: 0 4px 20px;
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   align-items: center;
-  margin-bottom: 18px;
-  padding: 16px 20px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(199, 221, 228, 0.72);
-  border-radius: 24px;
-  box-shadow: 0 14px 30px rgba(15, 47, 63, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 12px 24px rgba(15, 47, 63, 0.05);
   backdrop-filter: blur(14px);
 }
 
@@ -485,7 +486,7 @@ textarea {
 .page-stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .console-card-page {
@@ -1140,9 +1141,9 @@ textarea {
 .hero,
 .panel {
   background: var(--amhara-panel);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 8px 20px var(--amhara-shadow);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 10px 22px rgba(15, 47, 63, 0.05);
   border: 1px solid var(--amhara-border);
 }
 
@@ -2755,8 +2756,8 @@ textarea {
   justify-content: space-between;
   align-items: center;
   gap: 14px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
   border-radius: 14px;
   background: var(--surface-muted);
   border: 1px solid var(--amhara-border);
@@ -2821,7 +2822,7 @@ textarea {
 }
 
 .panel-header {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .panel-header p {
@@ -3845,7 +3846,7 @@ button:hover {
 
 .support-workspace {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   min-height: 0;
 }
 
@@ -3925,7 +3926,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .support-queue-heading {
@@ -3942,10 +3943,10 @@ button:hover {
   background: var(--surface-muted);
   border: 1px solid var(--amhara-border);
   border-radius: 18px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -3988,10 +3989,10 @@ button:hover {
 .support-detail-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 12px;
   color: var(--amhara-muted);
-  font-size: 0.92rem;
+  font-size: 0.84rem;
 }
 
 .support-conversation-list {
@@ -4002,8 +4003,8 @@ button:hover {
 .support-composer {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .support-composer-header {
@@ -4019,10 +4020,10 @@ button:hover {
 
 .reply-box {
   width: 100%;
-  min-height: 112px;
+  min-height: 104px;
   border: 1px solid var(--amhara-border);
   border-radius: 18px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   font: inherit;
   color: var(--amhara-text);
   background: #ffffff;
@@ -4106,19 +4107,19 @@ button:hover {
 
 .floating-support-panel {
   position: fixed;
-  right: 28px;
-  bottom: 104px;
+  right: 24px;
+  bottom: 96px;
   width: min(980px, calc(100vw - 96px));
   max-height: calc(100vh - 140px);
-  padding: 18px;
+  padding: 16px;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(2, 69, 97, 0.12);
   box-shadow: 0 16px 40px rgba(2, 69, 97, 0.14);
-  z-index: 34;
+  z-index: 48;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   overflow: hidden;
 }
 
