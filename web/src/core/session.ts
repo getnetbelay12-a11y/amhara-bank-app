@@ -76,9 +76,11 @@ export function getSessionConsoleBasePath(session: AppSession): string {
   return getConsoleBasePath(session.role);
 }
 
-export function getDefaultSessionSection(session: AppSession): ConsoleLandingKey | 'schoolConsole' {
+export function getDefaultSessionSection(
+  session: AppSession,
+): ConsoleLandingKey | 'schoolConsole' | 'schoolDashboard' {
   if (isSchoolSession(session)) {
-    return 'schoolConsole';
+    return 'schoolDashboard';
   }
 
   return getDefaultConsoleSection(session.role);

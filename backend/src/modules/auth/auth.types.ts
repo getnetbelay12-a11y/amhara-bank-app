@@ -22,6 +22,7 @@ export interface CheckExistingAccountResult {
   exists: boolean;
   matchType?: 'phone' | 'fayda_fin' | 'national_id_data' | 'email';
   message: string;
+  customerId?: string;
 }
 
 export interface LoginResult extends AuthTokens {

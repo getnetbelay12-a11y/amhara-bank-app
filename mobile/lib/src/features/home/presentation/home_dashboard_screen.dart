@@ -197,6 +197,45 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'New and improved',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ),
+                          const AppNewBadge(),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'See the key upgrades now available in your Amhara Bank app.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: abayTextSoft,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      for (var index = 0; index < featureHighlights.length; index++) ...[
+                        AppListItem(
+                          title: featureHighlights[index].title,
+                          subtitle: featureHighlights[index].subtitle,
+                          icon: featureHighlights[index].icon,
+                          badge: featureHighlights[index].badge,
+                          onTap: () => featureHighlights[index].onTap(context),
+                        ),
+                        if (index != featureHighlights.length - 1) const Divider(height: 1),
+                      ],
+                    ],
+                  ),
+                ),
                 if (activeLoan != null) ...[
                   const SizedBox(height: 16),
                   AppCard(
@@ -381,45 +420,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 4),
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'New and improved',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                          const AppNewBadge(),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'See the key upgrades now available in your Amhara Bank app.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: abayTextSoft,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      for (var index = 0; index < featureHighlights.length; index++) ...[
-                          AppListItem(
-                            title: featureHighlights[index].title,
-                            subtitle: featureHighlights[index].subtitle,
-                            icon: featureHighlights[index].icon,
-                            badge: featureHighlights[index].badge,
-                            onTap: () => featureHighlights[index].onTap(context),
-                          ),
-                          if (index != featureHighlights.length - 1) const Divider(height: 1),
-                        ],
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

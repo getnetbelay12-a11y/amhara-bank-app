@@ -256,6 +256,39 @@ export class DemoAuthApi implements AuthApi {
       permissions: ['dashboard.branch', 'employees.branch', 'loans.branch'],
     };
   }
+
+  async checkExistingAccount(payload: {
+    phoneNumber?: string;
+    faydaFin?: string;
+    email?: string;
+  }) {
+    await wait(80);
+
+    const normalizedPhone = payload.phoneNumber?.trim();
+    const customerIdByPhone = new Map([
+      ['0911000001', 'AMH-100001'],
+      ['0911000002', 'AMH-100003'],
+      ['0911000003', 'AMH-100004'],
+    ]);
+
+    const resolvedCustomerId = normalizedPhone
+      ? customerIdByPhone.get(normalizedPhone)
+      : undefined;
+
+    if (resolvedCustomerId) {
+      return {
+        exists: true,
+        matchType: 'phone' as const,
+        message: 'An account already exists for this phone number.',
+        customerId: resolvedCustomerId,
+      };
+    }
+
+    return {
+      exists: false,
+      message: 'No existing account was found. You can continue onboarding.',
+    };
+  }
 }
 
 export class DemoSupportApi implements SupportApi {
@@ -1162,6 +1195,10 @@ const demoFeePlans: FeePlanRecord[] = [
 ];
 
 export class DemoSchoolConsoleApi implements SchoolConsoleApi {
+  private readonly schools = demoSchoolPortfolio.map((item) => ({ ...item }));
+  private readonly registry = demoStudentRegistry.map((item) => ({ ...item }));
+  private readonly invoices = demoSchoolInvoices.map((item) => ({ ...item }));
+  private readonly collections = demoSchoolCollections.map((item) => ({ ...item }));
   private readonly feePlans = demoFeePlans.map((item) => ({ ...item }));
   private readonly guardians = demoGuardianRecords.map((item) => ({ ...item }));
   private readonly guardianLinks = demoGuardianStudentLinks.map((item) => ({ ...item }));
@@ -1196,40 +1233,40 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
 
     return {
       summary: {
-        schools: demoSchoolPortfolio.length,
-        students: demoSchoolPortfolio.reduce((sum, item) => sum + item.students, 0),
-        openInvoices: demoSchoolPortfolio.reduce(
+        schools: this.schools.length,
+        students: this.schools.reduce((sum, item) => sum + item.students, 0),
+        openInvoices: this.schools.reduce(
           (sum, item) => sum + item.openInvoices,
           0,
         ),
-        todayCollections: demoSchoolPortfolio.reduce(
+        todayCollections: this.schools.reduce(
           (sum, item) => sum + item.todayCollections,
           0,
         ),
       },
-      schools: demoSchoolPortfolio,
-      invoices: demoSchoolInvoices,
-      collections: demoSchoolCollections,
+      schools: this.schools,
+      invoices: this.invoices,
+      collections: this.collections,
       collectionSummary: {
         generatedAt: (() => {
-          const recordedDates = demoSchoolCollections.map((item) => item.recordedAt).sort();
+          const recordedDates = this.collections.map((item) => item.recordedAt).sort();
           return recordedDates[recordedDates.length - 1] ?? new Date().toISOString();
         })(),
-        receipts: demoSchoolCollections.length,
-        successful: demoSchoolCollections.filter((item) => item.status === 'successful').length,
-        pendingSettlement: demoSchoolCollections.filter(
+        receipts: this.collections.length,
+        successful: this.collections.filter((item) => item.status === 'successful').length,
+        pendingSettlement: this.collections.filter(
           (item) => item.reconciliationStatus === 'awaiting_settlement',
         ).length,
-        totalAmount: demoSchoolCollections.reduce((sum, item) => sum + item.amount, 0),
-        matchedAmount: demoSchoolCollections
+        totalAmount: this.collections.reduce((sum, item) => sum + item.amount, 0),
+        matchedAmount: this.collections
           .filter((item) => item.reconciliationStatus === 'matched')
           .reduce((sum, item) => sum + item.amount, 0),
-        awaitingSettlementAmount: demoSchoolCollections
+        awaitingSettlementAmount: this.collections
           .filter((item) => item.reconciliationStatus === 'awaiting_settlement')
           .reduce((sum, item) => sum + item.amount, 0),
-        aging: buildDemoCollectionAging(demoSchoolCollections),
+        aging: buildDemoCollectionAging(this.collections),
       },
-      schoolSettlements: buildDemoSchoolSettlements(demoSchoolCollections),
+      schoolSettlements: buildDemoSchoolSettlements(this.collections),
     };
   }
 
@@ -1238,7 +1275,7 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
 
     const search = filters.search?.trim().toLowerCase();
 
-    return demoStudentRegistry.filter((item) => {
+    return this.registry.filter((item) => {
       if (filters.schoolId && item.schoolId !== filters.schoolId) {
         return false;
       }
@@ -1273,7 +1310,7 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
   async getStudentDetail(studentId: string): Promise<StudentDetail | null> {
     await wait(60);
 
-    const student = demoStudentRegistry.find((item) => item.studentId === studentId);
+    const student = this.registry.find((item) => item.studentId === studentId);
     if (!student) {
       return null;
     }
@@ -1282,8 +1319,8 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
       student,
       guardians: this.guardians.filter((item) => item.studentId === studentId),
       guardianLinks: this.guardianLinks.filter((item) => item.studentId === studentId),
-      invoices: demoSchoolInvoices.filter((item) => item.studentId === studentId),
-      collections: demoSchoolCollections.filter((item) => item.studentId === studentId),
+      invoices: this.invoices.filter((item) => item.studentId === studentId),
+      collections: this.collections.filter((item) => item.studentId === studentId),
     };
   }
 
@@ -1367,7 +1404,7 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
   }): Promise<InvoiceBatchPreviewResult> {
     await wait(60);
 
-    const relevantStudents = demoStudentRegistry.filter(
+    const relevantStudents = this.registry.filter(
       (item) =>
         item.schoolId === payload.schoolId &&
         (!payload.grade || item.grade === payload.grade),
@@ -1441,7 +1478,7 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
   }): Promise<InvoiceBatchGenerationResult> {
     await wait(70);
 
-    const generatedInvoices = demoStudentRegistry.filter(
+    const generatedInvoices = this.registry.filter(
       (item) =>
         item.schoolId === payload.schoolId &&
         (!payload.grade || item.grade === payload.grade),
@@ -1465,7 +1502,7 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
   }): Promise<SchoolPortfolioItem> {
     await wait(80);
 
-    return {
+    const created = {
       id: `school_${payload.code.toLowerCase()}`,
       code: payload.code,
       name: payload.name,
@@ -1477,6 +1514,8 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
       openInvoices: 0,
       todayCollections: 0,
     };
+    this.schools.unshift(created);
+    return created;
   }
 
   async importStudents(payload: {
@@ -1485,20 +1524,35 @@ export class DemoSchoolConsoleApi implements SchoolConsoleApi {
   }): Promise<StudentImportResult> {
     await wait(90);
 
+    const school = this.schools.find((item) => item.id === payload.schoolId);
+    const schoolName = school?.name ?? payload.schoolId;
+
+    const items = payload.students.map((item) => ({
+      schoolId: payload.schoolId,
+      schoolName,
+      studentId: item.studentId,
+      fullName: item.fullName,
+      grade: item.grade ?? 'Unassigned',
+      section: item.section ?? 'Unassigned',
+      guardianName: item.guardianName ?? 'Pending guardian',
+      guardianPhone: item.guardianPhone ?? '',
+      guardianStatus: item.guardianPhone ? 'linked' : 'pending_verification',
+      enrollmentStatus: 'active',
+      academicYear: '2026',
+      rollNumber: undefined,
+      status: 'active',
+    }));
+
+    this.registry.unshift(...items);
+    if (school) {
+      school.students += items.length;
+    }
+
     return {
       schoolId: payload.schoolId,
       importedCount: payload.students.length,
       message: `Imported ${payload.students.length} students into ${payload.schoolId}.`,
-      items: payload.students.map((item) => ({
-        schoolId: payload.schoolId,
-        studentId: item.studentId,
-        fullName: item.fullName,
-        grade: item.grade ?? 'Unassigned',
-        section: item.section ?? 'Unassigned',
-        guardianName: item.guardianName ?? 'Pending guardian',
-        guardianPhone: item.guardianPhone ?? '',
-        status: 'active',
-      })),
+      items,
     };
   }
 }

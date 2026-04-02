@@ -8,7 +8,6 @@ import type {
 import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
 import {
-  DashboardGrid,
   DashboardMetricRow,
   DashboardPage,
   DashboardSectionCard,
@@ -117,6 +116,10 @@ export function SupportChatWorkspace({
     () => resolveOldestSupportAge(filteredQueueItems),
     [filteredQueueItems],
   );
+  const defaultDetailChat = useMemo(
+    () => resolveSupportFocusChat(queueItems, 'all'),
+    [queueItems],
+  );
 
   useEffect(() => {
     onUnreadChange?.(unreadCount);
@@ -153,6 +156,28 @@ export function SupportChatWorkspace({
 
     void loadDetail(matchingChat.conversationId);
   }, [assignedChats, openChats, resolvedChats, selected?.conversationId, selectedMemberId]);
+
+  useEffect(() => {
+    if (variant !== 'page') {
+      return;
+    }
+
+    if (selected?.conversationId || selectedConversationId || selectedMemberId) {
+      return;
+    }
+
+    if (!defaultDetailChat) {
+      return;
+    }
+
+    void loadDetail(defaultDetailChat.conversationId);
+  }, [
+    defaultDetailChat,
+    selected?.conversationId,
+    selectedConversationId,
+    selectedMemberId,
+    variant,
+  ]);
 
   async function loadQueues() {
     try {
@@ -232,16 +257,81 @@ export function SupportChatWorkspace({
     }
   }
 
-  return (
-    <div
-      className={
-        variant === 'panel'
-          ? 'support-workspace support-workspace-panel'
-          : 'support-workspace support-workspace-page'
-      }
-    >
-      {variant === 'page' ? (
-        <>
+  if (variant === 'page') {
+    return (
+      <DashboardPage>
+        <div className="console-focus-page support-page">
+          <section className="console-command-grid">
+            <article className="console-command-card console-command-card-primary">
+              <div className="console-command-copy">
+                <span className="eyebrow">Support command</span>
+                <h3>Keep customer response fast by separating unread, escalated, and SLA-risk conversations.</h3>
+                <p>Make the queue feel like a live service desk instead of a backlog list, with clear focus before detail handling.</p>
+              </div>
+              <div className="console-command-stats">
+                <div>
+                  <span>Queue size</span>
+                  <strong>{queueItems.length.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Unread</span>
+                  <strong>{unreadCount.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Escalated</span>
+                  <strong>{escalatedCount.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Oldest waiting</span>
+                  <strong>{oldestWaitingAge}</strong>
+                </div>
+              </div>
+            </article>
+
+            <article className="console-command-card console-command-card-warning">
+              <span className="eyebrow">Priority signals</span>
+              <h3>Service pressure</h3>
+              <ul className="console-priority-list">
+                <li>
+                  <span>Unread queue</span>
+                  <strong>{unreadFilteredCount.toLocaleString()} conversations are still waiting on an agent reply.</strong>
+                </li>
+                <li>
+                  <span>High priority</span>
+                  <strong>{highPriorityCount.toLocaleString()} chats are marked high priority.</strong>
+                </li>
+                <li>
+                  <span>SLA risk</span>
+                  <strong>{focusChat ? `Current focus due ${formatSlaDue(focusChat.responseDueAt)}` : 'No active SLA risk in the current filter.'}</strong>
+                </li>
+              </ul>
+            </article>
+
+            <article className="console-command-card console-command-card-secondary">
+              <span className="eyebrow">Execution snapshot</span>
+              <h3>What agents should do</h3>
+              <ol className="console-action-ladder">
+                <li>
+                  <div>
+                    <strong>{filteredOpenChats.length.toLocaleString()} new or waiting</strong>
+                    <p>Assign fresh conversations quickly so they do not age into escalations.</p>
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <strong>{filteredAssignedChats.length.toLocaleString()} assigned</strong>
+                    <p>Clear active agent queues before opening additional backlog work.</p>
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <strong>{filteredResolvedChats.length.toLocaleString()} resolved</strong>
+                    <p>Use the resolved queue as the lower-priority audit trail, not the active workspace.</p>
+                  </div>
+                </li>
+              </ol>
+            </article>
+          </section>
           <ConsoleKpiStrip
             items={[
               { icon: 'CU', label: 'Customers', value: queueItems.length.toLocaleString(), trend: 'Support members', trendDirection: 'neutral' },
@@ -259,14 +349,11 @@ export function SupportChatWorkspace({
               { label: 'Expiring Insurance', value: escalatedCount.toLocaleString(), tone: 'amber' },
             ]}
           />
-        </>
-      ) : null}
-      {variant === 'page' ? (
-        <DashboardSectionCard
+          <DashboardSectionCard
           title="Support Overview"
           description="Queue focus, unread pressure, and SLA posture."
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="dashboard-metric-grid dashboard-metric-grid-5">
             <DashboardMetricRow
               label="Current Focus"
               value={`${formatSupportQueueFilter(queueFilter)} · ${filteredQueueItems.length.toLocaleString()}`}
@@ -282,14 +369,193 @@ export function SupportChatWorkspace({
               value={focusChat ? formatSlaDue(focusChat.responseDueAt) : 'Not available'}
             />
           </div>
-        </DashboardSectionCard>
-      ) : null}
-      <DashboardGrid>
+          </DashboardSectionCard>
+          <div className="support-workspace support-workspace-page">
+            <section className="panel support-queue-panel">
+              <div className="panel-header support-panel-header">
+                <div>
+                  <p className="eyebrow">Support</p>
+                  <h2>Support Chat Inbox</h2>
+                </div>
+                <span className="support-status-dot">
+                  {unreadCount} waiting
+                </span>
+              </div>
+              {returnContextLabel && onReturnToContext ? (
+                <div className="loan-return-banner">
+                  <div>
+                    <strong>Opened from {returnContextLabel}</strong>
+                    <span>Return to your dashboard context without losing the support handoff.</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="loan-return-button"
+                    onClick={onReturnToContext}
+                  >
+                    Back to {returnContextLabel}
+                  </button>
+                </div>
+              ) : null}
+              {error ? <p className="muted">{error}</p> : null}
+
+              <div className="recommendation-selector-row">
+                {([
+                  ['all', 'All'],
+                  ['unread', 'Unread'],
+                  ['sla_risk', 'SLA Risk'],
+                  ['escalated', 'Escalated'],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={
+                      queueFilter === value
+                        ? 'recommendation-selector active'
+                        : 'recommendation-selector'
+                    }
+                    onClick={() => setQueueFilter(value)}
+                  >
+                    {label} ({queueFilterCounts[value].toLocaleString()})
+                  </button>
+                ))}
+              </div>
+              <p className="loan-action-guidance">
+                Viewing the {formatSupportQueueFilter(queueFilter)} support workload across active queues.
+              </p>
+              {focusChat ? (
+                <div className="recommendation-selector-row">
+                  <button
+                    type="button"
+                    className="recommendation-selector active"
+                    aria-label="Focus top-priority support chat"
+                    onClick={() => void loadDetail(focusChat.conversationId)}
+                  >
+                    {resolveSupportFocusLabel(queueFilter, focusChat)}
+                  </button>
+                </div>
+              ) : null}
+
+              <SupportQueueSection
+                items={filteredOpenChats}
+                onSelect={loadDetail}
+                title="New and waiting chats"
+              />
+              <SupportQueueSection
+                items={filteredAssignedChats}
+                onSelect={loadDetail}
+                title="Assigned chats"
+              />
+              <SupportQueueSection
+                items={filteredResolvedChats}
+                onSelect={loadDetail}
+                title="Resolved chats"
+              />
+            </section>
+
+            <section className="panel support-detail-panel">
+              <div className="panel-header support-panel-header">
+                <div>
+                  <p className="eyebrow">Conversation</p>
+                  <h2>
+                    {selected ? selected.memberName ?? selected.customerId : 'Select a support conversation'}
+                  </h2>
+                </div>
+                {selected ? (
+                  <span className={`support-status-pill ${statusClassName(selected.status)}`}>
+                    {formatStatus(selected.status)}
+                  </span>
+                ) : null}
+              </div>
+
+              {selected ? (
+                <>
+                  <div className="support-detail-meta">
+                    <span>{selected.memberType}</span>
+                    <span>{selected.issueCategory.replace(/_/g, ' ')}</span>
+                    <span>{selected.branchName ?? 'Amhara Bank'}</span>
+                    {selected.priority ? <span>{selected.priority}</span> : null}
+                    {selected.slaState ? <span>SLA {selected.slaState.replace(/_/g, ' ')}</span> : null}
+                    {selected.responseDueAt ? <span>Due {formatSlaDue(selected.responseDueAt)}</span> : null}
+                    {selected.assignedToStaffName ? (
+                      <span>{selected.assignedToStaffName}</span>
+                    ) : null}
+                  </div>
+                  <div className="conversation-timeline support-conversation-list">
+                    {selected.messages.map((message) => (
+                      <div className="timeline-item" key={message.id}>
+                        <strong>{message.senderName ?? message.senderType}</strong>
+                        <p>{message.message}</p>
+                        <span className="muted">{formatTimestamp(message.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="support-composer">
+                    <div className="support-composer-header">
+                      <div>
+                        <strong>Reply to Customer</strong>
+                        <p className="muted">Send a live reply back to the mobile app.</p>
+                      </div>
+                      <button
+                        className="support-send-button"
+                        disabled={!reply.trim() || sendingReply}
+                        onClick={() => void sendReply()}
+                        type="button"
+                      >
+                        {sendingReply ? 'Sending...' : 'Send Reply'}
+                      </button>
+                    </div>
+                    <textarea
+                      className="reply-box"
+                      onChange={(event) => setReply(event.target.value)}
+                      placeholder="Type your reply to the customer"
+                      rows={4}
+                      value={reply}
+                    />
+                  </div>
+                  <div className="action-row">
+                    <button
+                      className="support-secondary-button"
+                      onClick={() => void assignCurrent()}
+                      type="button"
+                    >
+                      Assign To Me
+                    </button>
+                    <button
+                      className="support-secondary-button"
+                      onClick={() => void updateCurrentStatus('resolved')}
+                      type="button"
+                    >
+                      Resolve
+                    </button>
+                    <button
+                      className="support-secondary-button"
+                      onClick={() => void updateCurrentStatus('closed')}
+                      type="button"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="muted">
+                  Select a conversation to review customer details, shared message history, and
+                  live support actions.
+                </p>
+              )}
+            </section>
+          </div>
+        </div>
+      </DashboardPage>
+    );
+  }
+
+  return (
+    <div className="support-workspace support-workspace-panel">
       <section className="panel support-queue-panel">
         <div className="panel-header support-panel-header">
           <div>
             <p className="eyebrow">Support</p>
-            <h2>{variant === 'panel' ? 'Support Chat' : 'Support Chat Inbox'}</h2>
+            <h2>Support Chat</h2>
           </div>
           <span className="support-status-dot">
             {unreadCount} waiting
@@ -341,6 +607,7 @@ export function SupportChatWorkspace({
             <button
               type="button"
               className="recommendation-selector active"
+              aria-label="Focus top-priority support chat"
               onClick={() => void loadDetail(focusChat.conversationId)}
             >
               {resolveSupportFocusLabel(queueFilter, focusChat)}
@@ -456,7 +723,6 @@ export function SupportChatWorkspace({
           </p>
         )}
       </section>
-      </DashboardGrid>
     </div>
   );
 }

@@ -830,6 +830,16 @@ export interface StaffLoginPayload {
 
 export interface AuthApi {
   login(payload: StaffLoginPayload): Promise<AppSession>;
+  checkExistingAccount?: (payload: {
+    phoneNumber?: string;
+    faydaFin?: string;
+    email?: string;
+  }) => Promise<{
+    exists: boolean;
+    matchType?: 'phone' | 'fayda_fin' | 'national_id_data' | 'email';
+    message: string;
+    customerId?: string;
+  }>;
 }
 
 export interface DashboardApi {

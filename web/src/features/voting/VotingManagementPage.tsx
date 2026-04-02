@@ -7,6 +7,7 @@ import { ConsoleKpiStrip } from '../../shared/components/ConsoleKpiStrip';
 import { CriticalActionStrip } from '../../shared/components/CriticalActionStrip';
 import {
   DashboardGrid,
+  DashboardMiniBars,
   DashboardMetricRow,
   DashboardPage,
   DashboardSectionCard,
@@ -97,6 +98,8 @@ export function VotingManagementPage({
     totalShareholders === 0 || votes.length === 0
       ? 0
       : Number((votes.reduce((sum, vote) => sum + vote.participationRate, 0) / votes.length).toFixed(2));
+  const maxBranchResponses = Math.max(...(participation?.branchParticipation ?? []).map((item) => item.totalResponses), 1);
+  const maxDistrictResponses = Math.max(...(participation?.districtParticipation ?? []).map((item) => item.totalResponses), 1);
 
   async function refreshVotes(nextSelectedVoteId?: string) {
     const nextVotes = await votingApi.getVotes(session.role);
@@ -150,19 +153,92 @@ export function VotingManagementPage({
 
   return (
     <DashboardPage>
-      {returnContextLabel && onReturnToContext ? (
-        <div className="loan-return-banner">
-          <div>
-            <p className="eyebrow">Dashboard Context</p>
-            <strong>Opened from {returnContextLabel}</strong>
+      <div className="console-focus-page governance-page">
+        {returnContextLabel && onReturnToContext ? (
+          <div className="loan-return-banner">
+            <div>
+              <p className="eyebrow">Dashboard Context</p>
+              <strong>Opened from {returnContextLabel}</strong>
+            </div>
+            <button type="button" className="loan-return-button" onClick={onReturnToContext}>
+              Back to {returnContextLabel}
+            </button>
           </div>
-          <button type="button" className="loan-return-button" onClick={onReturnToContext}>
-            Back to {returnContextLabel}
-          </button>
-        </div>
-      ) : null}
+        ) : null}
 
-      <ConsoleKpiStrip
+        <section className="console-command-grid">
+          <article className="console-command-card console-command-card-primary">
+            <div className="console-command-copy">
+              <span className="eyebrow">Governance command</span>
+              <h3>Keep shareholder voting compact, visible, and easy to operate without letting governance overwhelm the console.</h3>
+              <p>Start with turnout, active votes, and quick status control, then drop into detailed result tables only when they matter.</p>
+            </div>
+            <div className="console-command-stats">
+              <div>
+                <span>Shareholders</span>
+                <strong>{totalShareholders.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Active votes</span>
+                <strong>{activeVotingCount.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Votes cast</span>
+                <strong>{votesCast.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Participation</span>
+                <strong>{participationRate.toFixed(0)}%</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="console-command-card console-command-card-warning">
+            <span className="eyebrow">Priority signals</span>
+            <h3>Governance posture</h3>
+            <ul className="console-priority-list">
+              <li>
+                <span>Active voting</span>
+                <strong>{activeVotingCount.toLocaleString()} votes are currently open and need participation monitoring.</strong>
+              </li>
+              <li>
+                <span>Drafts</span>
+                <strong>{votes.filter((vote) => vote.status === 'draft').length.toLocaleString()} governance items are staged but not yet opened.</strong>
+              </li>
+              <li>
+                <span>Turnout</span>
+                <strong>{participationRate >= 50 ? 'Participation is healthy.' : 'Participation is below the ideal threshold and needs reminders.'}</strong>
+              </li>
+            </ul>
+          </article>
+
+          <article className="console-command-card console-command-card-secondary">
+            <span className="eyebrow">Execution snapshot</span>
+            <h3>What managers should do</h3>
+            <ol className="console-action-ladder">
+              <li>
+                <div>
+                  <strong>{selectedVote ? capitalize(selectedVote.status) : 'No vote selected'}</strong>
+                  <p>Use the active vote status control to move drafts into open circulation or close completed ballots.</p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong>{results.length.toLocaleString()} result lines</strong>
+                  <p>Review result percentages only after turnout posture is acceptable.</p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong>{participation?.uniqueDistricts?.toLocaleString() ?? '0'} districts engaged</strong>
+                  <p>Use turnout by district and branch to direct announcement follow-up.</p>
+                </div>
+              </li>
+            </ol>
+          </article>
+        </section>
+
+        <ConsoleKpiStrip
         items={[
           { icon: 'CU', label: 'Customers', value: totalShareholders.toLocaleString(), trend: 'Eligible shareholders', trendDirection: 'neutral' },
           { icon: 'LN', label: 'Loans', value: votesCast.toLocaleString(), trend: 'Votes cast', trendDirection: 'up' },
@@ -187,7 +263,7 @@ export function VotingManagementPage({
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <DashboardMetricRow label="Active Voting" value={activeVotingCount.toLocaleString()} />
-          <DashboardMetricRow label="Total Shareholders" value={totalShareholders.toLocaleString()} />
+          <DashboardMetricRow label="Total shareholders" value={totalShareholders.toLocaleString()} />
           <DashboardMetricRow label="Votes Cast" value={votesCast.toLocaleString()} />
           <DashboardMetricRow label="Participation" value={`${participationRate.toFixed(0)}%`} />
         </div>
@@ -233,7 +309,7 @@ export function VotingManagementPage({
         </div>
       </DashboardSectionCard>
 
-      <DashboardSectionCard title="Voting Control" description="Open, close, and review governance events with head-office access controls.">
+        <DashboardSectionCard title="Voting Control" description="Open, close, and review governance events with head-office access controls.">
         <DashboardTableCard
           title="Vote Queue"
           description="Governance items in scope."
@@ -242,14 +318,36 @@ export function VotingManagementPage({
             <button key={`${vote.voteId}-link`} type="button" className="ghost-button" onClick={() => setSelectedVoteId(vote.voteId)}>
               {vote.title}
             </button>,
-            capitalize(vote.status),
+            <span
+              className={`table-status-badge ${
+                vote.status === 'open'
+                  ? 'positive'
+                  : vote.status === 'draft'
+                    ? 'warning'
+                    : 'neutral'
+              }`}
+            >
+              {capitalize(vote.status)}
+            </span>,
             vote.totalResponses.toLocaleString(),
-            `${vote.participationRate.toFixed(0)}%`,
-            vote.status === 'draft'
-              ? 'Ready to open'
-              : vote.status === 'open'
-                ? 'Monitor or close'
-                : 'View final results',
+            <div className="table-inline-progress">
+              <span>{vote.participationRate.toFixed(0)}%</span>
+              <div className="table-progress-track">
+                <div
+                  className={`table-progress-fill ${
+                    vote.participationRate >= 50 ? 'success' : vote.participationRate >= 30 ? 'warning' : 'accent'
+                  }`}
+                  style={{ width: `${Math.min(Math.max(vote.participationRate, 0), 100)}%` }}
+                />
+              </div>
+            </div>,
+            <span className="table-status-badge neutral">
+              {vote.status === 'draft'
+                ? 'Ready to open'
+                : vote.status === 'open'
+                  ? 'Monitor or close'
+                  : 'View final results'}
+            </span>,
           ])}
         />
         {selectedVote ? (
@@ -282,16 +380,55 @@ export function VotingManagementPage({
             <DashboardMetricRow label="Branches" value={participation?.uniqueBranches?.toLocaleString() ?? '0'} />
             <DashboardMetricRow label="Districts" value={participation?.uniqueDistricts?.toLocaleString() ?? '0'} />
           </div>
+          <DashboardMiniBars
+            items={(participation?.branchParticipation ?? []).slice(0, 5).map((item) => ({
+              label: item.name.split(' ')[0] ?? item.name,
+              value: item.totalResponses,
+              tone: 'blue',
+            }))}
+          />
           <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
             <DashboardTableCard
               title="Branch Turnout"
               headers={['Branch', 'Votes']}
-              rows={(participation?.branchParticipation ?? []).map((item) => [item.name, item.totalResponses.toLocaleString()])}
+              rows={(participation?.branchParticipation ?? []).map((item) => [
+                item.name,
+                <div className="table-inline-progress">
+                  <span>{item.totalResponses.toLocaleString()}</span>
+                  <div className="table-progress-track">
+                    <div
+                      className="table-progress-fill blue"
+                      style={{
+                        width: `${Math.min(
+                          Math.round((item.totalResponses / Math.max(maxBranchResponses, 1)) * 100),
+                          100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>,
+              ])}
             />
             <DashboardTableCard
               title="District Turnout"
               headers={['District', 'Votes']}
-              rows={(participation?.districtParticipation ?? []).map((item) => [item.name, item.totalResponses.toLocaleString()])}
+              rows={(participation?.districtParticipation ?? []).map((item) => [
+                item.name,
+                <div className="table-inline-progress">
+                  <span>{item.totalResponses.toLocaleString()}</span>
+                  <div className="table-progress-track">
+                    <div
+                      className="table-progress-fill teal"
+                      style={{
+                        width: `${Math.min(
+                          Math.round((item.totalResponses / Math.max(maxDistrictResponses, 1)) * 100),
+                          100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>,
+              ])}
             />
           </div>
         </DashboardSectionCard>
@@ -300,9 +437,22 @@ export function VotingManagementPage({
           title="Results View"
           description="Votes per option and result percentages for the selected event."
           headers={['Option', 'Votes', 'Percentage']}
-          rows={results.map((item) => [item.optionName, item.votes.toLocaleString(), `${item.percentage.toFixed(2)}%`])}
+          rows={results.map((item) => [
+            item.optionName,
+            item.votes.toLocaleString(),
+            <div className="table-inline-progress">
+              <span>{item.percentage.toFixed(2)}%</span>
+              <div className="table-progress-track">
+                <div
+                  className="table-progress-fill success"
+                  style={{ width: `${Math.min(Math.max(item.percentage, 0), 100)}%` }}
+                />
+              </div>
+            </div>,
+          ])}
         />
       </DashboardGrid>
+      </div>
     </DashboardPage>
   );
 }

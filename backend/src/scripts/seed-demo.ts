@@ -148,6 +148,10 @@ import { AuditLog, AuditLogSchema } from '../modules/audit/schemas/audit-log.sch
 async function run() {
   const mongoUri =
     process.env.MONGODB_URI ?? 'mongodb://localhost:27017/amhara_bank_app';
+  const demoNow = new Date();
+  const schoolPaymentDueAnchor = new Date(
+    demoNow.getTime() - 29 * 24 * 60 * 60 * 1000,
+  );
 
   await mongoose.connect(mongoUri);
 
@@ -531,11 +535,11 @@ async function run() {
       memberNumber: 'AMH-100001',
       memberType: MemberType.SHAREHOLDER,
       role: UserRole.SHAREHOLDER_MEMBER,
-      fullName: 'Abebe Kebede',
-      firstName: 'Abebe',
-      lastName: 'Kebede',
+      fullName: 'Getnet Belay',
+      firstName: 'Getnet',
+      lastName: 'Belay',
       phone: '0911000001',
-      email: 'abebe@amhara-bank.local',
+      email: 'getnet@amhara-bank.local',
       branchId: bahirDarBranchId,
       districtId: bahirDarDistrictId,
       shareBalance: 250000,
@@ -1116,13 +1120,13 @@ async function run() {
     memberId: shareholderMemberId,
     accountId: shareholderSavingsId,
     branchId: bahirDarBranchId,
-    studentId: 'ST-1001',
-    schoolName: 'Blue Nile Academy',
-    amount: 1500,
+    studentId: 'school_profile_001',
+    schoolName: 'Bright Future School',
+    amount: 5000,
     channel: 'mobile',
     status: 'successful',
-    createdAt: new Date('2026-03-01T09:00:00.000Z'),
-    updatedAt: new Date('2026-03-01T09:00:00.000Z'),
+    createdAt: schoolPaymentDueAnchor,
+    updatedAt: schoolPaymentDueAnchor,
   });
 
   const sixthRegularLoanId = new Types.ObjectId();
@@ -1139,11 +1143,11 @@ async function run() {
       interestRate: 13,
       termMonths: 24,
       purpose: 'Working capital',
-      status: LoanStatus.BRANCH_REVIEW,
-      currentLevel: LoanWorkflowLevel.BRANCH,
-      assignedToStaffId: branchLoanOfficerId,
+      status: LoanStatus.DISTRICT_REVIEW,
+      currentLevel: LoanWorkflowLevel.DISTRICT,
+      assignedToStaffId: districtLoanOfficerId,
       createdAt: new Date('2026-03-02T09:00:00.000Z'),
-      updatedAt: new Date('2026-03-02T09:00:00.000Z'),
+      updatedAt: new Date('2026-03-10T10:00:00.000Z'),
     },
     {
       _id: new Types.ObjectId(),
@@ -1407,7 +1411,7 @@ async function run() {
       _id: atmCardServiceRequestId,
       memberId: shareholderMemberId,
       customerId: 'AMH-100001',
-      memberName: 'Abebe Kebede',
+      memberName: 'Getnet Belay',
       phoneNumber: '0911000001',
       branchId: bahirDarBranchId,
       districtId: bahirDarDistrictId,
@@ -1520,7 +1524,7 @@ async function run() {
       serviceRequestId: atmCardServiceRequestId,
       actorType: 'member',
       actorId: shareholderMemberId.toString(),
-      actorName: 'Abebe Kebede',
+      actorName: 'Getnet Belay',
       eventType: 'created',
       toStatus: ServiceRequestStatus.SUBMITTED,
       note: 'Request submitted by customer.',
@@ -1681,7 +1685,7 @@ async function run() {
       cardId: shareholderCardId,
       actorType: 'member',
       actorId: shareholderMemberId.toString(),
-      actorName: 'Abebe Kebede',
+      actorName: 'Getnet Belay',
       eventType: 'replacement_requested',
       note: 'Card damaged and replacement requested by the member.',
       createdAt: new Date('2026-03-10T09:00:00.000Z'),
@@ -2767,7 +2771,7 @@ async function run() {
     {
       _id: assignedConversationId,
       memberId: shareholderMemberId,
-      memberName: 'Abebe Kebede',
+      memberName: 'Getnet Belay',
       phoneNumber: '0911000001',
       memberType: MemberType.SHAREHOLDER,
       branchId: bahirDarBranchId,
@@ -2883,7 +2887,7 @@ async function run() {
       conversationId: assignedConversationId,
       senderType: 'customer',
       senderId: shareholderMemberId.toString(),
-      senderName: 'Abebe Kebede',
+      senderName: 'Getnet Belay',
       message: 'My payment confirmation is delayed. Can you check it?',
       messageType: 'text',
       createdAt: new Date('2026-03-11T10:15:00.000Z'),

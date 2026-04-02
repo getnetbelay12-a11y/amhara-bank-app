@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuditModule } from '../audit/audit.module';
 import { Member, MemberSchema } from '../members/schemas/member.schema';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SchoolPaymentsModule } from '../school-payments/school-payments.module';
 import {
   ServiceRequest,
   ServiceRequestSchema,
@@ -26,6 +27,7 @@ import { Transaction, TransactionSchema } from './schemas/transaction.schema';
   imports: [
     AuditModule,
     NotificationsModule,
+    SchoolPaymentsModule,
     MongooseModule.forFeature([
       { name: Transaction.name, schema: TransactionSchema },
       { name: SchoolPayment.name, schema: SchoolPaymentSchema },

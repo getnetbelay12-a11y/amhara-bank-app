@@ -1,46 +1,36 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 
 export function DashboardPage({ children }: PropsWithChildren) {
-  return <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 pb-4">{children}</div>;
+  return <div className="page-stack console-card-page">{children}</div>;
 }
 
 export function DashboardGrid({
   children,
   cols = 2,
 }: PropsWithChildren<{ cols?: 1 | 2 }>) {
-  return (
-    <div
-      className={
-        cols === 2
-          ? 'grid grid-cols-1 gap-4 xl:grid-cols-2'
-          : 'grid grid-cols-1 gap-4'
-      }
-    >
-      {children}
-    </div>
-  );
+  return <div className={cols === 2 ? 'bank-dashboard-grid' : 'dashboard-single-grid'}>{children}</div>;
 }
 
 export function DashboardCard({
   title,
   description,
   action,
+  className,
   children,
 }: PropsWithChildren<{
   title: string;
   description?: string;
   action?: ReactNode;
+  className?: string;
 }>) {
   return (
-    <section className="rounded-[20px] border border-slate-200/90 bg-white p-4 shadow-[0_14px_30px_rgba(15,47,63,0.05)]">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-slate-900 md:text-lg">{title}</h2>
-          {description ? (
-            <p className="mt-1 text-[13px] leading-5 text-slate-500">{description}</p>
-          ) : null}
+    <section className={className ? `dashboard-card ${className}` : 'dashboard-card'}>
+      <div className="dashboard-card-header">
+        <div className="dashboard-card-copy">
+          <h2>{title}</h2>
+          {description ? <p>{description}</p> : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className="dashboard-card-action">{action}</div> : null}
       </div>
       {children}
     </section>
@@ -55,28 +45,21 @@ export function DashboardDataTable({
   rows: ReactNode[][];
 }) {
   return (
-    <div className="overflow-hidden rounded-[18px] border border-slate-200/90 bg-white">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-[13px] [&_tbody_td:first-child]:font-semibold [&_tbody_td:first-child]:text-slate-900">
-          <thead className="bg-slate-50/90">
+    <div className="dashboard-data-table">
+      <div className="dashboard-data-table-scroll">
+        <table>
+          <thead>
             <tr>
               {headers.map((header) => (
-                <th
-                  key={header}
-                  className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500"
-                >
-                  {header}
-                </th>
+                <th key={header}>{header}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody>
             {rows.map((row, index) => (
-              <tr key={index} className="hover:bg-slate-50/70">
+              <tr key={index}>
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} className="px-3 py-2.5 align-middle text-slate-600">
-                    {cell}
-                  </td>
+                  <td key={cellIndex}>{cell}</td>
                 ))}
               </tr>
             ))}
@@ -101,31 +84,17 @@ export function DashboardKpiCard({
   trendDirection?: 'up' | 'down' | 'neutral';
 }) {
   return (
-    <article className="rounded-[20px] border border-slate-200/90 bg-white p-4 shadow-[0_12px_24px_rgba(15,47,63,0.045)]">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-[10px] font-extrabold tracking-[0.14em] text-blue-900">
-          {icon}
-        </span>
+    <article className="console-kpi-card kpi-card">
+      <div className="console-kpi-card-top">
+        <span className="console-kpi-icon">{icon}</span>
         {trend ? (
-          <span
-            className={
-              trendDirection === 'up'
-                ? 'inline-flex min-h-6 items-center rounded-full bg-emerald-50 px-2.5 text-[10px] font-bold text-emerald-700'
-                : trendDirection === 'down'
-                  ? 'inline-flex min-h-6 items-center rounded-full bg-red-50 px-2.5 text-[10px] font-bold text-red-700'
-                  : 'inline-flex min-h-6 items-center rounded-full bg-blue-50 px-2.5 text-[10px] font-bold text-blue-800'
-            }
-          >
+          <span className={`console-kpi-trend ${trendDirection}`}>
             {trendDirection === 'down' ? 'v' : trendDirection === 'up' ? '^' : '-'} {trend}
           </span>
         ) : null}
       </div>
-      <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </span>
-      <strong className="mt-2 block text-[1.7rem] font-semibold tracking-tight text-slate-900">
-        {value}
-      </strong>
+      <span className="eyebrow">{label}</span>
+      <strong>{value}</strong>
     </article>
   );
 }
@@ -141,30 +110,19 @@ export function DashboardAlertCard({
   tone: 'red' | 'orange' | 'amber' | 'blue';
   onClick?: () => void;
 }) {
-  const toneClass =
-    tone === 'red'
-      ? 'from-red-500 to-red-700 shadow-[0_16px_28px_rgba(185,28,28,0.18)]'
-      : tone === 'orange'
-        ? 'from-orange-400 to-orange-600 shadow-[0_16px_28px_rgba(194,65,12,0.18)]'
-        : tone === 'blue'
-          ? 'from-blue-500 to-blue-700 shadow-[0_16px_28px_rgba(29,78,216,0.18)]'
-          : 'from-amber-400 to-amber-600 shadow-[0_16px_28px_rgba(180,83,9,0.18)]';
-
   return (
     <button
       type="button"
-      className={`rounded-[20px] bg-gradient-to-br ${toneClass} p-4 text-left text-white`}
+      className={`critical-alert-chip ${tone}`}
       onClick={onClick}
     >
-      <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
-        {label}
-      </span>
-      <strong className="mt-2 block text-[1.8rem] font-semibold tracking-tight">{value}</strong>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </button>
   );
 }
 
-export function DashboardSectionCard(props: PropsWithChildren<{ title: string; description?: string; action?: ReactNode }>) {
+export function DashboardSectionCard(props: PropsWithChildren<{ title: string; description?: string; action?: ReactNode; className?: string }>) {
   return <DashboardCard {...props} />;
 }
 
@@ -178,14 +136,12 @@ export function DashboardMetricRow({
   note?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-slate-50 px-3.5 py-3">
+    <div className="dashboard-metric-row">
       <div>
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-          {label}
-        </span>
-        {note ? <span className="mt-1 block text-[13px] text-slate-500">{note}</span> : null}
+        <span className="dashboard-metric-label">{label}</span>
+        {note ? <span className="dashboard-metric-note">{note}</span> : null}
       </div>
-      <strong className="text-sm font-semibold text-slate-900 md:text-base">{value}</strong>
+      <strong className="dashboard-metric-value">{value}</strong>
     </div>
   );
 }
@@ -213,17 +169,43 @@ export function DashboardProgressRow({
             : 'from-blue-500 to-blue-700';
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[13px] font-medium text-slate-600">{label}</span>
-        <strong className="text-[13px] font-semibold text-slate-900">{value}</strong>
+    <div className="dashboard-progress-row">
+      <div className="dashboard-progress-meta">
+        <span>{label}</span>
+        <strong>{value}</strong>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-        <div
-          className={`h-full rounded-full bg-gradient-to-r ${toneClass}`}
-          style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
-        />
+      <div className="dashboard-progress-track">
+        <div className={`dashboard-progress-fill ${tone}`} style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }} />
       </div>
+    </div>
+  );
+}
+
+export function DashboardMiniBars({
+  items,
+}: {
+  items: Array<{
+    label: string;
+    value: number;
+    tone?: 'blue' | 'teal' | 'amber' | 'red' | 'green';
+  }>;
+}) {
+  const maxValue = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <div className="dashboard-mini-bars">
+      {items.map((item) => (
+        <div key={item.label} className="dashboard-mini-bar-item">
+          <div className="dashboard-mini-bar-track">
+            <div
+              className={`dashboard-mini-bar-fill ${item.tone ?? 'blue'}`}
+              style={{ height: `${Math.max((item.value / maxValue) * 100, 8)}%` }}
+            />
+          </div>
+          <strong>{item.value.toLocaleString()}</strong>
+          <span>{item.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -239,7 +221,7 @@ export function DashboardPipelineCard({
 }) {
   return (
     <DashboardCard title={title} description={description}>
-      <div className="flex flex-col gap-3">
+      <div className="dashboard-stack">
         {stages.map((stage) => (
           <DashboardProgressRow
             key={stage.label}
@@ -257,16 +239,18 @@ export function DashboardPipelineCard({
 export function DashboardTableCard({
   title,
   description,
+  className,
   headers,
   rows,
 }: {
   title: string;
   description?: string;
+  className?: string;
   headers: string[];
   rows: ReactNode[][];
 }) {
   return (
-    <DashboardCard title={title} description={description}>
+    <DashboardCard title={title} description={description} className={className}>
       <DashboardDataTable headers={headers} rows={rows} />
     </DashboardCard>
   );
@@ -280,9 +264,9 @@ export function EmptyStateCard({
   description: string;
 }) {
   return (
-    <div className="rounded-[20px] border border-dashed border-slate-300 bg-slate-50 px-5 py-7 text-center">
-      <strong className="block text-base font-semibold text-slate-900">{title}</strong>
-      <p className="mt-2 text-sm text-slate-500">{description}</p>
+    <div className="dashboard-empty-state">
+      <strong>{title}</strong>
+      <p>{description}</p>
     </div>
   );
 }
@@ -298,7 +282,7 @@ export function QuickActionChip({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm"
+      className="dashboard-quick-chip"
     >
       {label}
     </button>
@@ -318,16 +302,13 @@ export function FloatingChatButton({
     <button
       aria-expanded={isOpen}
       aria-label="Open support chat panel"
-      className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-[0_20px_36px_rgba(29,78,216,0.28)] ring-4 ring-white/80"
+      className="floating-chat-button"
       onClick={onClick}
       type="button"
     >
-      <span aria-hidden="true">💬</span>
-      <span>Chat</span>
+      <span aria-hidden="true">Chat</span>
       {unreadCount ? (
-        <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-0.5 text-xs font-bold text-blue-700">
-          {unreadCount}
-        </span>
+        <span className="floating-chat-count">{unreadCount}</span>
       ) : null}
     </button>
   );

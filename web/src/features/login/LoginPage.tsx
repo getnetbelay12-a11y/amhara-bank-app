@@ -240,7 +240,7 @@ function resolveTargetRoute(scope: LoginRoleMode) {
     case 'district':
       return '/console/district/dashboard';
     case 'school':
-      return '/console/school/school-console';
+      return '/school-console';
     default:
       return '/console/head-office/dashboard';
   }

@@ -249,6 +249,32 @@ export class FallbackAuthApi implements AuthApi {
       return this.fallback.login(payload);
     }
   }
+
+  async checkExistingAccount(
+    payload: NonNullable<AuthApi['checkExistingAccount']> extends (
+      input: infer T,
+    ) => Promise<unknown>
+      ? T
+      : never,
+  ) {
+    if (!this.primary.checkExistingAccount) {
+      return this.fallback.checkExistingAccount?.(payload) ?? {
+        exists: false,
+        message: 'No existing account was found. You can continue onboarding.',
+      };
+    }
+
+    try {
+      return await this.primary.checkExistingAccount(payload);
+    } catch {
+      return (
+        (await this.fallback.checkExistingAccount?.(payload)) ?? {
+          exists: false,
+          message: 'No existing account was found. You can continue onboarding.',
+        }
+      );
+    }
+  }
 }
 
 export class FallbackDashboardApi implements DashboardApi {

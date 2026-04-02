@@ -180,9 +180,25 @@ function resolvePathSection(session: AppSession): ConsoleNavKey {
 }
 
 function normalizeConsoleSection(section: string, session: AppSession): ConsoleNavKey {
+  if (isSchoolSession(session)) {
+    const schoolAliases: Record<string, ConsoleNavKey> = {
+      'school-console': 'schoolDashboard',
+      dashboard: 'schoolDashboard',
+      students: 'schoolStudents',
+      billing: 'schoolBilling',
+      payments: 'schoolPayments',
+      reports: 'schoolReports',
+      communication: 'schoolCommunication',
+      settings: 'schoolSettings',
+    };
+
+    return schoolAliases[section] ?? (getDefaultSessionSection(session) as ConsoleNavKey);
+  }
+
   const aliases: Record<string, ConsoleNavKey> = {
     dashboard: 'dashboard',
     'school-console': 'schoolConsole',
+    'bank-console': 'schoolConsole',
     support: 'support',
     notifications: 'notifications',
     loans: 'loans',

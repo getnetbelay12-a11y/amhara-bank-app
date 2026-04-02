@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 
 import {
   AdminRole,
@@ -12,40 +12,92 @@ import {
   isSchoolSession,
   type AppSession,
 } from '../../core/session';
-import { AuditLogViewerPage } from '../audit/AuditLogViewerPage';
-import { BranchAnalyticsPage } from '../branch-analytics/BranchAnalyticsPage';
-import { DistrictAnalyticsPage } from '../district-analytics/DistrictAnalyticsPage';
-import { BranchManagerDashboardPage } from '../branch-dashboard/BranchManagerDashboardPage';
-import { CardOperationsPage } from '../cards/CardOperationsPage';
-import { DistrictManagerDashboardPage } from '../district-dashboard/DistrictManagerDashboardPage';
-import { HeadOfficeManagerDashboardPage } from '../head-office-dashboard/HeadOfficeManagerDashboardPage';
-import { LoanMonitoringPage } from '../loan-monitoring/LoanMonitoringPage';
-import { AutopayOperationsPage } from '../notifications/AutopayOperationsPage';
-import { ManagerNotificationCenterPage } from '../notifications/ManagerNotificationCenterPage';
-import { PaymentDisputesPage } from '../payments/PaymentDisputesPage';
-import { PaymentOperationsPage } from '../payments/PaymentOperationsPage';
-import { SchoolConsolePage } from '../school-console/SchoolConsolePage';
 import { FloatingSupportChatLauncher } from '../support/FloatingSupportChatLauncher';
-import { ServiceRequestsPage } from '../service-requests/ServiceRequestsPage';
-import { SupportInboxPage } from '../support/SupportInboxPage';
-import {
-  AlertsPage,
-  BranchOverviewPage,
-  KycAuditPage,
-  KycVerificationPage,
-  MembersPage,
-  RiskMonitoringPage,
-  ReportsHubPage,
-  StaffSnapshotPage,
-  SupportAnalyticsPage,
-} from '../manager-pages/ManagerPageSections';
 import type { NotificationCategory } from '../../core/api/contracts';
 import {
   getConsoleDefinition,
   type ConsoleNavKey,
   type ConsoleNavItem,
 } from '../shared-layout/consoleConfig';
-import { VotingManagementPage } from '../voting/VotingManagementPage';
+
+const prefetchedConsoleSections = new Set<ConsoleNavKey>();
+const AuditLogViewerPage = lazy(() =>
+  import('../audit/AuditLogViewerPage').then((module) => ({ default: module.AuditLogViewerPage })),
+);
+const DistrictAnalyticsPage = lazy(() =>
+  import('../district-analytics/DistrictAnalyticsPage').then((module) => ({ default: module.DistrictAnalyticsPage })),
+);
+const BranchManagerDashboardPage = lazy(() =>
+  import('../branch-dashboard/BranchManagerDashboardPage').then((module) => ({ default: module.BranchManagerDashboardPage })),
+);
+const CardOperationsPage = lazy(() =>
+  import('../cards/CardOperationsPage').then((module) => ({ default: module.CardOperationsPage })),
+);
+const DistrictManagerDashboardPage = lazy(() =>
+  import('../district-dashboard/DistrictManagerDashboardPage').then((module) => ({ default: module.DistrictManagerDashboardPage })),
+);
+const HeadOfficeManagerDashboardPage = lazy(() =>
+  import('../head-office-dashboard/HeadOfficeManagerDashboardPage').then((module) => ({ default: module.HeadOfficeManagerDashboardPage })),
+);
+const LoanMonitoringPage = lazy(() =>
+  import('../loan-monitoring/LoanMonitoringPage').then((module) => ({ default: module.LoanMonitoringPage })),
+);
+const AutopayOperationsPage = lazy(() =>
+  import('../notifications/AutopayOperationsPage').then((module) => ({ default: module.AutopayOperationsPage })),
+);
+const ManagerNotificationCenterPage = lazy(() =>
+  import('../notifications/ManagerNotificationCenterPage').then((module) => ({ default: module.ManagerNotificationCenterPage })),
+);
+const PaymentDisputesPage = lazy(() =>
+  import('../payments/PaymentDisputesPage').then((module) => ({ default: module.PaymentDisputesPage })),
+);
+const PaymentOperationsPage = lazy(() =>
+  import('../payments/PaymentOperationsPage').then((module) => ({ default: module.PaymentOperationsPage })),
+);
+const SchoolConsolePage = lazy(() =>
+  import('../school-console/SchoolConsolePage').then((module) => ({ default: module.SchoolConsolePage })),
+);
+const SchoolSisConsolePage = lazy(() =>
+  import('../school-console/SchoolSisConsolePage').then((module) => ({
+    default: module.SchoolSisConsolePage,
+  })),
+);
+const ServiceRequestsPage = lazy(() =>
+  import('../service-requests/ServiceRequestsPage').then((module) => ({ default: module.ServiceRequestsPage })),
+);
+const SupportInboxPage = lazy(() =>
+  import('../support/SupportInboxPage').then((module) => ({ default: module.SupportInboxPage })),
+);
+const AlertsPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.AlertsPage })),
+);
+const BranchOverviewPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.BranchOverviewPage })),
+);
+const KycAuditPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.KycAuditPage })),
+);
+const KycVerificationPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.KycVerificationPage })),
+);
+const MembersPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.MembersPage })),
+);
+const RiskMonitoringPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.RiskMonitoringPage })),
+);
+const ReportsHubPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.ReportsHubPage })),
+);
+const StaffSnapshotPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.StaffSnapshotPage })),
+);
+const SupportAnalyticsPage = lazy(() =>
+  import('../manager-pages/ManagerPageSections').then((module) => ({ default: module.SupportAnalyticsPage })),
+);
+const VotingManagementPage = lazy(() =>
+  import('../voting/VotingManagementPage').then((module) => ({ default: module.VotingManagementPage })),
+);
 
 type DashboardShellProps = {
   session: AppSession;
@@ -120,6 +172,10 @@ export function DashboardShell({
   const [auditEntryContext, setAuditEntryContext] = useState<EntryContext>(null);
   const brandEyebrow = schoolSession ? 'School Console' : 'Amhara Bank';
   const brandSignature = schoolSession ? 'SCHOOL OPERATIONS' : 'AMHARA BANK';
+  const brandTitle = schoolSession ? session.schoolName : consoleDefinition.title;
+  const brandSubtitle = schoolSession
+    ? `Student registry, billing, collections, and parent payment operations for ${session.branchName ?? 'the assigned branch'}.`
+    : consoleDefinition.subtitle;
   const sidebarFooterCopy = schoolSession
     ? 'School-side registry, billing, collections, and onboarding.'
     : 'Live bank operations by role and scope.';
@@ -141,9 +197,13 @@ export function DashboardShell({
     }
   }, [active, session]);
 
+  useEffect(() => {
+    void prefetchConsoleSection(active);
+  }, [active]);
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={schoolSession ? 'app-shell school-console-shell' : 'app-shell'}>
+      <aside className={schoolSession ? 'sidebar school-console-sidebar' : 'sidebar'}>
         <div className="brand-block">
           <div className="brand-header">
             <div className="brand-mark" aria-hidden="true">
@@ -151,11 +211,11 @@ export function DashboardShell({
             </div>
             <div className="brand-copy">
               <p className="eyebrow">{brandEyebrow}</p>
-              <h1>{consoleDefinition.title}</h1>
+              <h1>{brandTitle}</h1>
               <div className="brand-signature">{brandSignature}</div>
             </div>
           </div>
-          <p className="brand-subtitle muted">{consoleDefinition.subtitle}</p>
+          <p className="brand-subtitle muted">{brandSubtitle}</p>
         </div>
 
         <nav className="sidebar-nav" aria-label="Manager navigation">
@@ -170,6 +230,12 @@ export function DashboardShell({
                     <button
                       key={item.key}
                       className={isActive ? 'nav-item active' : 'nav-item'}
+                      onMouseEnter={() => {
+                        void prefetchConsoleSection(item.key);
+                      }}
+                      onFocus={() => {
+                        void prefetchConsoleSection(item.key);
+                      }}
                       onClick={() => {
                         setActive(item.key);
                         if (item.key === 'audit') {
@@ -223,8 +289,8 @@ export function DashboardShell({
         </div>
       </aside>
 
-      <main className="content">
-        <header className="topbar">
+      <main className={schoolSession ? 'content school-console-content' : 'content'}>
+        <header className={schoolSession ? 'topbar school-console-topbar' : 'topbar'}>
           <div className="topbar-heading">
             <p className="eyebrow">{consoleDefinition.summaryLabel}</p>
             <h2>{activeItem.label}</h2>
@@ -241,16 +307,26 @@ export function DashboardShell({
                 aria-label={searchLabel}
               />
             </label>
-            <button
-              type="button"
-              className="topbar-alert-button"
-              onClick={() => setActive('notifications')}
-              aria-label="Open notifications"
-            >
-              <span aria-hidden="true">🔔</span>
-              <span className="topbar-alert-label">Notifications</span>
-              <span className="topbar-alert-badge">New</span>
-            </button>
+            {schoolSession ? (
+              <div className="topbar-user-block topbar-user-block-school">
+                <strong>School Workspace</strong>
+                <div className="topbar-meta-row">
+                  <span className="topbar-pill">Registry</span>
+                  <span className="topbar-pill subtle">Billing and collections</span>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="topbar-alert-button"
+                onClick={() => setActive('notifications')}
+                aria-label="Open notifications"
+              >
+                <span aria-hidden="true">🔔</span>
+                <span className="topbar-alert-label">Notifications</span>
+                <span className="topbar-alert-badge">New</span>
+              </button>
+            )}
             <div className="topbar-user-block">
               <strong>{session.fullName}</strong>
               <div className="topbar-meta-row">
@@ -260,7 +336,7 @@ export function DashboardShell({
             </div>
           </div>
         </header>
-
+        <Suspense fallback={<ConsolePageFallback />}>
         {!schoolSession && active === 'dashboard' && consoleKind === 'branch' ? (
           <BranchManagerDashboardPage
             session={session}
@@ -381,7 +457,41 @@ export function DashboardShell({
             }}
           />
         ) : null}
-        {active === 'schoolConsole' ? <SchoolConsolePage session={session} /> : null}
+        {schoolSession &&
+        [
+          'schoolDashboard',
+          'schoolStudents',
+          'schoolBilling',
+          'schoolPayments',
+          'schoolReports',
+          'schoolCommunication',
+          'schoolSettings',
+        ].includes(active) ? (
+          <SchoolSisConsolePage
+            session={session}
+            section={active as
+              | 'schoolDashboard'
+              | 'schoolStudents'
+              | 'schoolBilling'
+              | 'schoolPayments'
+              | 'schoolReports'
+              | 'schoolCommunication'
+              | 'schoolSettings'}
+          />
+        ) : null}
+        {schoolSession && active === 'schoolConsole' ? (
+          <SchoolConsolePage session={session} variant="school" />
+        ) : null}
+        {!schoolSession && active === 'schoolConsole' ? (
+          <SchoolConsolePage
+            session={{
+              schoolId: 'bank_network',
+              schoolName: 'Partner School Network',
+              branchName: session.branchName ?? 'Head Office',
+            }}
+            variant="bank"
+          />
+        ) : null}
         {!schoolSession && active === 'members' ? <MembersPage session={session} /> : null}
         {!schoolSession && active === 'loans' ? (
           <LoanMonitoringPage
@@ -623,6 +733,7 @@ export function DashboardShell({
           />
         ) : null}
         {!schoolSession && active === 'supportAnalytics' ? <SupportAnalyticsPage /> : null}
+        </Suspense>
         <FloatingSupportChatLauncher />
       </main>
     </div>
@@ -646,6 +757,18 @@ export function ShellPreview() {
 
 export function LoginPreview() {
   return null;
+}
+
+function ConsolePageFallback() {
+  return (
+    <div className="dashboard-card">
+      <div className="dashboard-card-copy">
+        <span className="eyebrow">Loading</span>
+        <h2>Loading console workspace</h2>
+        <p>Preparing the active banking view.</p>
+      </div>
+    </div>
+  );
 }
 
 function buildNavSections(items: ConsoleNavItem[]) {
@@ -688,6 +811,13 @@ function getNavIcon(key: ConsoleNavKey) {
   const icons: Record<ConsoleNavKey, string> = {
     dashboard: 'DB',
     schoolConsole: 'SC',
+    schoolDashboard: 'DB',
+    schoolStudents: 'ST',
+    schoolBilling: 'BL',
+    schoolPayments: 'PY',
+    schoolReports: 'RP',
+    schoolCommunication: 'CM',
+    schoolSettings: 'SE',
     members: 'MB',
     loans: 'LN',
     autopayOps: 'AP',
@@ -713,7 +843,101 @@ function getNavIcon(key: ConsoleNavKey) {
   return icons[key];
 }
 
+async function prefetchConsoleSection(section: ConsoleNavKey) {
+  if (prefetchedConsoleSections.has(section)) {
+    return;
+  }
+
+  prefetchedConsoleSections.add(section);
+
+  switch (section) {
+    case 'dashboard':
+      await Promise.all([
+        import('../branch-dashboard/BranchManagerDashboardPage'),
+        import('../district-dashboard/DistrictManagerDashboardPage'),
+        import('../head-office-dashboard/HeadOfficeManagerDashboardPage'),
+      ]);
+      return;
+    case 'schoolConsole':
+      await import('../school-console/SchoolConsolePage');
+      return;
+    case 'members':
+    case 'staff':
+    case 'branches':
+    case 'loanEscalations':
+    case 'kycAudits':
+    case 'kyc':
+    case 'risk':
+    case 'reports':
+    case 'supportAnalytics':
+      await import('../manager-pages/ManagerPageSections');
+      return;
+    case 'loans':
+      await import('../loan-monitoring/LoanMonitoringPage');
+      return;
+    case 'autopayOps':
+      await import('../notifications/AutopayOperationsPage');
+      return;
+    case 'notifications':
+      await import('../notifications/ManagerNotificationCenterPage');
+      return;
+    case 'serviceRequests':
+      await import('../service-requests/ServiceRequestsPage');
+      return;
+    case 'paymentOps':
+      await import('../payments/PaymentOperationsPage');
+      return;
+    case 'paymentDisputes':
+      await import('../payments/PaymentDisputesPage');
+      return;
+    case 'cardOps':
+      await import('../cards/CardOperationsPage');
+      return;
+    case 'support':
+      await import('../support/SupportInboxPage');
+      return;
+    case 'districtAnalytics':
+      await import('../district-analytics/DistrictAnalyticsPage');
+      return;
+    case 'voting':
+      await import('../voting/VotingManagementPage');
+      return;
+    case 'audit':
+      await import('../audit/AuditLogViewerPage');
+      return;
+    case 'schoolDashboard':
+    case 'schoolStudents':
+    case 'schoolBilling':
+    case 'schoolPayments':
+    case 'schoolReports':
+    case 'schoolCommunication':
+    case 'schoolSettings':
+      await import('../school-console/SchoolSisConsolePage');
+      return;
+    default:
+      return;
+  }
+}
+
 function resolveConsolePath(session: AppSession, active: ConsoleNavKey) {
+  if (isSchoolSession(session)) {
+    const schoolRoutes: Partial<Record<ConsoleNavKey, string>> = {
+      schoolDashboard: '/school-console',
+      schoolStudents: '/school-console/students',
+      schoolBilling: '/school-console/billing',
+      schoolPayments: '/school-console/payments',
+      schoolReports: '/school-console/reports',
+      schoolCommunication: '/school-console/communication',
+      schoolSettings: '/school-console/settings',
+      schoolConsole: '/school-console',
+    };
+    return schoolRoutes[active] ?? '/school-console';
+  }
+
+  if (active === 'schoolConsole') {
+    return '/bank-console';
+  }
+
   const basePath = getSessionConsoleBasePath(session);
   const routeSegment = routeSegments[active] ?? active;
   return `${basePath}/${routeSegment}`;
@@ -722,6 +946,13 @@ function resolveConsolePath(session: AppSession, active: ConsoleNavKey) {
 const routeSegments: Partial<Record<ConsoleNavKey, string>> = {
   dashboard: 'dashboard',
   schoolConsole: 'school-console',
+  schoolDashboard: 'dashboard',
+  schoolStudents: 'students',
+  schoolBilling: 'billing',
+  schoolPayments: 'payments',
+  schoolReports: 'school-reports',
+  schoolCommunication: 'communication',
+  schoolSettings: 'settings',
   support: 'support',
   notifications: 'notifications',
   paymentOps: 'payment-operations',

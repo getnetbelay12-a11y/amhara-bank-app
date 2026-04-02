@@ -152,6 +152,22 @@ export class HttpAuthApi implements AuthApi {
       permissions: response.user.permissions ?? [],
     }, payload.identifier);
   }
+
+  async checkExistingAccount(payload: {
+    phoneNumber?: string;
+    faydaFin?: string;
+    email?: string;
+  }) {
+    return this.httpClient.request<{
+      exists: boolean;
+      matchType?: 'phone' | 'fayda_fin' | 'national_id_data' | 'email';
+      message: string;
+      customerId?: string;
+    }>('/auth/check-existing-account', {
+      method: 'POST',
+      body: payload,
+    });
+  }
 }
 
 export class HttpDashboardApi implements DashboardApi {

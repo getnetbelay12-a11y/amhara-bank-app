@@ -109,6 +109,20 @@ export function LoanMonitoringPage({
   }, [initialLoanId, loanMonitoringApi]);
 
   useEffect(() => {
+    if (!loanMonitoringApi) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshQueue().catch(() => undefined);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [initialLoanId, loanMonitoringApi]);
+
+  useEffect(() => {
     if (!selectedLoanId || !loanMonitoringApi) {
       setSelectedLoanDetail(null);
       setSelectedCustomerProfile(null);
@@ -275,33 +289,106 @@ export function LoanMonitoringPage({
 
   return (
     <DashboardPage>
-      <RecommendationPanel
-        memberId={selectedLoan?.memberId ?? ''}
-        compact
-        title="Loan Workflow Insights"
-        description="Repayment support, top-up opportunity, and loan follow-up cues for staff."
-      />
-      <ConsoleKpiStrip
-        items={[
-          { icon: 'CU', label: 'Customers', value: loanRows.length.toLocaleString(), trend: 'Loan queue', trendDirection: 'neutral' },
-          { icon: 'LN', label: 'Loans', value: loanRows.length.toLocaleString(), trend: `${pipelineCounts.intake.toLocaleString()} submitted`, trendDirection: 'up' },
-          { icon: 'SV', label: 'Savings', value: pipelineCounts.approval.toLocaleString(), trend: 'Approval ready', trendDirection: 'up' },
-          { icon: 'AP', label: 'Approvals', value: pipelineCounts.approval.toLocaleString(), trend: 'Workflow ready', trendDirection: 'up' },
-          { icon: 'AL', label: 'Alerts', value: pipelineCounts.escalation.toLocaleString(), trend: 'Needs escalation', trendDirection: 'down' },
-        ]}
-      />
-      <CriticalActionStrip
-        items={[
-          { label: 'Overdue Loans', value: loanRows.filter((loan) => loan.agingTone === 'critical').length.toLocaleString(), tone: 'red' },
-          { label: 'Missing Documents', value: loanRows.filter((loan) => loan.deficiencyCount > 0).length.toLocaleString(), tone: 'orange' },
-          { label: 'Support Backlog', value: loanRows.filter((loan) => loan.needsEscalation).length.toLocaleString(), tone: 'red' },
-          { label: 'Expiring Insurance', value: '0', tone: 'amber' },
-        ]}
-      />
-      <Panel
+      <div className="console-focus-page loans-page">
+        <section className="console-command-grid">
+          <article className="console-command-card console-command-card-primary">
+            <div className="console-command-copy">
+              <span className="eyebrow">Loan command</span>
+              <h3>Move the queue faster by separating correction work, approval-ready cases, and escalations.</h3>
+              <p>Give staff a clear workflow view before they drop into case detail so the queue feels operational instead of procedural.</p>
+            </div>
+            <div className="console-command-stats">
+              <div>
+                <span>Queue size</span>
+                <strong>{loanRows.length.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Approval ready</span>
+                <strong>{pipelineCounts.approval.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Critical aging</span>
+                <strong>{loanRows.filter((loan) => loan.agingTone === 'critical').length.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Focus case</span>
+                <strong>{focusLoan?.loanId ?? 'No active focus'}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="console-command-card console-command-card-warning">
+            <span className="eyebrow">Priority signals</span>
+            <h3>Workflow pressure</h3>
+            <ul className="console-priority-list">
+              <li>
+                <span>Corrections</span>
+                <strong>{loanRows.filter((loan) => loan.deficiencyCount > 0).length.toLocaleString()} loans still need documents or clarification.</strong>
+              </li>
+              <li>
+                <span>Escalations</span>
+                <strong>{pipelineCounts.escalation.toLocaleString()} cases need a higher-level review handoff.</strong>
+              </li>
+              <li>
+                <span>Aging</span>
+                <strong>{loanRows.filter((loan) => loan.agingTone === 'critical').length.toLocaleString()} cases are at critical response age.</strong>
+              </li>
+            </ul>
+          </article>
+
+          <article className="console-command-card console-command-card-secondary">
+            <span className="eyebrow">Execution snapshot</span>
+            <h3>Where staff should act</h3>
+            <ol className="console-action-ladder">
+              <li>
+                <div>
+                  <strong>{pipelineCounts.intake.toLocaleString()} submitted</strong>
+                  <p>Review the full intake first to prevent correction work from hiding approval-ready cases.</p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong>{pipelineCounts.correction.toLocaleString()} need correction</strong>
+                  <p>Return incomplete files with explicit action notes before they age further.</p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong>{pipelineCounts.approval.toLocaleString()} ready for approval</strong>
+                  <p>Clear clean files quickly to show visible movement through the pipeline.</p>
+                </div>
+              </li>
+            </ol>
+          </article>
+        </section>
+
+        <ConsoleKpiStrip
+          items={[
+            { icon: 'CU', label: 'Customers', value: loanRows.length.toLocaleString(), trend: 'Loan queue', trendDirection: 'neutral' },
+            { icon: 'LN', label: 'Loans', value: loanRows.length.toLocaleString(), trend: `${pipelineCounts.intake.toLocaleString()} submitted`, trendDirection: 'up' },
+            { icon: 'SV', label: 'Savings', value: pipelineCounts.approval.toLocaleString(), trend: 'Approval ready', trendDirection: 'up' },
+            { icon: 'AP', label: 'Approvals', value: pipelineCounts.approval.toLocaleString(), trend: 'Workflow ready', trendDirection: 'up' },
+            { icon: 'AL', label: 'Alerts', value: pipelineCounts.escalation.toLocaleString(), trend: 'Needs escalation', trendDirection: 'down' },
+          ]}
+        />
+        <CriticalActionStrip
+          items={[
+            { label: 'Overdue Loans', value: loanRows.filter((loan) => loan.agingTone === 'critical').length.toLocaleString(), tone: 'red' },
+            { label: 'Missing Documents', value: loanRows.filter((loan) => loan.deficiencyCount > 0).length.toLocaleString(), tone: 'orange' },
+            { label: 'Support Backlog', value: loanRows.filter((loan) => loan.needsEscalation).length.toLocaleString(), tone: 'red' },
+            { label: 'Expiring Insurance', value: '0', tone: 'amber' },
+          ]}
+        />
+        <RecommendationPanel
+          memberId={selectedLoan?.memberId ?? ''}
+          compact
+          title="Loan Workflow Insights"
+          description="Repayment support, top-up opportunity, and loan follow-up cues for staff."
+        />
+        <Panel
         title="Loan Monitoring"
         description="Filterable operational loan queue for branch, district, and head office staff."
-      >
+        >
         {returnContextLabel && onReturnToContext ? (
           <div className="loan-return-banner">
             <div>
@@ -325,50 +412,72 @@ export function LoanMonitoringPage({
             <span>{actionFeedback.message}</span>
           </div>
         ) : null}
-        <div className="recommendation-selector-row">
-          {([
-            ['all', 'All'],
-            ['critical_aging', 'Critical Aging'],
-            ['correction_required', 'Correction Required'],
-            ['approval_ready', 'Approval Ready'],
-            ['needs_escalation', 'Needs Escalation'],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              className={
-                queueFilter === value
-                  ? 'recommendation-selector active'
-                  : 'recommendation-selector'
-              }
-              onClick={() => setQueueFilter(value)}
-            >
-              {label} ({queueFilterCounts[value].toLocaleString()})
-            </button>
-          ))}
-        </div>
-        <p className="loan-action-guidance">
-          Viewing {filteredLoanRows.length.toLocaleString()} case
-          {filteredLoanRows.length === 1 ? '' : 's'} in the{' '}
-          {formatQueueFilterLabel(queueFilter)} queue view.
-        </p>
-        <div className="loan-pipeline-visual">
-          <div className="loan-pipeline-stage">
-            <span>Intake</span>
-            <strong>{pipelineCounts.intake.toLocaleString()}</strong>
-          </div>
-          <div className="loan-pipeline-stage">
-            <span>Correction</span>
-            <strong>{pipelineCounts.correction.toLocaleString()}</strong>
-          </div>
-          <div className="loan-pipeline-stage">
-            <span>Approval</span>
-            <strong>{pipelineCounts.approval.toLocaleString()}</strong>
-          </div>
-          <div className="loan-pipeline-stage">
-            <span>Escalation</span>
-            <strong>{pipelineCounts.escalation.toLocaleString()}</strong>
-          </div>
+        <div className="workflow-control-stack">
+          <section className="workflow-surface-card">
+            <div className="workflow-surface-header">
+              <div>
+                <span className="eyebrow">Queue filters</span>
+                <h3>Focus the active loan queue</h3>
+              </div>
+              <span className="dashboard-summary-label">
+                {filteredLoanRows.length.toLocaleString()} active
+              </span>
+            </div>
+            <div className="recommendation-selector-row">
+              {([
+                ['all', 'All'],
+                ['critical_aging', 'Critical Aging'],
+                ['correction_required', 'Correction Required'],
+                ['approval_ready', 'Approval Ready'],
+                ['needs_escalation', 'Needs Escalation'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={
+                    queueFilter === value
+                      ? 'recommendation-selector active'
+                      : 'recommendation-selector'
+                  }
+                  onClick={() => setQueueFilter(value)}
+                >
+                  {label} ({queueFilterCounts[value].toLocaleString()})
+                </button>
+              ))}
+            </div>
+            <p className="loan-action-guidance">
+              Viewing {filteredLoanRows.length.toLocaleString()} case
+              {filteredLoanRows.length === 1 ? '' : 's'} in the{' '}
+              {formatQueueFilterLabel(queueFilter)} queue view.
+            </p>
+          </section>
+
+          <section className="workflow-surface-card">
+            <div className="workflow-surface-header">
+              <div>
+                <span className="eyebrow">Pipeline posture</span>
+                <h3>Stage balance</h3>
+              </div>
+            </div>
+            <div className="loan-pipeline-visual">
+              <div className="loan-pipeline-stage">
+                <span>Intake</span>
+                <strong>{pipelineCounts.intake.toLocaleString()}</strong>
+              </div>
+              <div className="loan-pipeline-stage">
+                <span>Correction</span>
+                <strong>{pipelineCounts.correction.toLocaleString()}</strong>
+              </div>
+              <div className="loan-pipeline-stage">
+                <span>Approval</span>
+                <strong>{pipelineCounts.approval.toLocaleString()}</strong>
+              </div>
+              <div className="loan-pipeline-stage">
+                <span>Escalation</span>
+                <strong>{pipelineCounts.escalation.toLocaleString()}</strong>
+              </div>
+            </div>
+          </section>
         </div>
         {filteredLoanRows.length > 0 ? (
           <div className="dashboard-summary-strip">
@@ -404,44 +513,63 @@ export function LoanMonitoringPage({
             </div>
           </div>
         ) : null}
-        {focusLoan ? (
-          <div className="recommendation-selector-row">
-            <button
-              type="button"
-              className="recommendation-selector active"
-              onClick={() => {
-                setSelectedLoanId(focusLoan.loanId);
-              }}
-            >
-              {resolveFocusActionLabel(queueFilter, focusLoan)}
-            </button>
-          </div>
-        ) : null}
-        <div className="recommendation-selector-row" style={{ marginTop: 16 }}>
-          {availableActions.map((action) => (
-            <button
-              key={action}
-              type="button"
-              className={
-                action === 'approve'
-                  ? 'recommendation-selector active'
-                  : 'recommendation-selector'
-              }
-              disabled={!selectedLoan || busyLoanId === selectedLoan.loanId}
-              onClick={() => void handleAction(action)}
-            >
-              {busyLoanId === selectedLoan?.loanId
-                ? 'Updating...'
-                : formatActionLabel(action)}
-            </button>
-          ))}
+        <div className="workflow-control-stack workflow-control-stack-compact">
+          {focusLoan ? (
+            <section className="workflow-surface-card">
+              <div className="workflow-surface-header">
+                <div>
+                  <span className="eyebrow">Recommended focus</span>
+                  <h3>Priority case</h3>
+                </div>
+              </div>
+              <div className="recommendation-selector-row">
+                <button
+                  type="button"
+                  className="recommendation-selector active"
+                  onClick={() => {
+                    setSelectedLoanId(focusLoan.loanId);
+                  }}
+                >
+                  {resolveFocusActionLabel(queueFilter, focusLoan)}
+                </button>
+              </div>
+            </section>
+          ) : null}
+          <section className="workflow-surface-card">
+            <div className="workflow-surface-header">
+              <div>
+                <span className="eyebrow">Workflow actions</span>
+                <h3>Next step controls</h3>
+              </div>
+            </div>
+            <div className="recommendation-selector-row">
+              {availableActions.map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  className={
+                    action === 'approve'
+                      ? 'recommendation-selector active'
+                      : 'recommendation-selector'
+                  }
+                  aria-label={`Run ${formatActionLabel(action)} action`}
+                  disabled={!selectedLoan || busyLoanId === selectedLoan.loanId}
+                  onClick={() => void handleAction(action)}
+                >
+                  {busyLoanId === selectedLoan?.loanId
+                    ? 'Updating...'
+                    : formatActionLabel(action)}
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
         {selectedLoanDetail ? (
           <p className="loan-action-guidance">
             Available next actions: {availableActions.map(formatActionLabel).join(', ') || 'None'}.
           </p>
         ) : null}
-        <div className="recommendation-selector-row">
+        <div className="recommendation-selector-row workflow-case-selector">
           {filteredLoanRows.map((loan) => (
             <button
               key={loan.loanId}
@@ -695,7 +823,8 @@ export function LoanMonitoringPage({
             description: `There are no loans matching the ${formatQueueFilterLabel(queueFilter).toLowerCase()} filter right now.`,
           }}
         />
-      </Panel>
+        </Panel>
+      </div>
     </DashboardPage>
   );
 }

@@ -142,6 +142,9 @@ export class AuthService implements OnModuleInit {
           exists: true,
           matchType: check.matchType,
           message: check.message,
+          customerId:
+            (existing as { customerId?: string; memberNumber?: string }).customerId ??
+            (existing as { customerId?: string; memberNumber?: string }).memberNumber,
         };
       }
     }

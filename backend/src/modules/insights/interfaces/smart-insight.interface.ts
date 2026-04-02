@@ -4,6 +4,7 @@ export type SmartInsightType =
   | 'utility_due'
   | 'rent_due'
   | 'loan_due'
+  | 'loan_status'
   | 'insurance_due'
   | 'low_balance_warning'
   | 'payment_overdue'

@@ -10,7 +10,7 @@ type ConsoleKpiItem = {
 
 export function ConsoleKpiStrip({ items }: { items: ConsoleKpiItem[] }) {
   return (
-    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="console-kpi-strip dashboard-kpi-strip">
       {items.map((item) => (
         <DashboardKpiCard
           key={item.label}

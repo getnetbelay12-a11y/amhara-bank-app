@@ -221,4 +221,25 @@ export class SchoolPaymentsService {
       receipt,
     };
   }
+
+  recordMemberPayment(params: {
+    studentId: string;
+    schoolName: string;
+    amount: number;
+    channel?: string;
+  }) {
+    const invoice = this.invoicesService
+      .list(undefined, params.studentId)
+      .find((item) => item.status === 'open' || item.status === 'partially_paid');
+
+    if (!invoice) {
+      return null;
+    }
+
+    return this.collect({
+      invoiceNo: invoice.invoiceNo,
+      amount: params.amount,
+      channel: params.channel ?? 'mobile',
+    });
+  }
 }

@@ -19,6 +19,7 @@ describe('PaymentsService', () => {
   let securityModel: { findOne: jest.Mock };
   let paymentNotificationPort: { dispatch: jest.Mock };
   let auditService: { logActorAction: jest.Mock };
+  let schoolPaymentsService: { recordMemberPayment: jest.Mock };
   let service: PaymentsService;
 
   beforeEach(() => {
@@ -35,6 +36,7 @@ describe('PaymentsService', () => {
     securityModel = { findOne: jest.fn() };
     paymentNotificationPort = { dispatch: jest.fn() };
     auditService = { logActorAction: jest.fn() };
+    schoolPaymentsService = { recordMemberPayment: jest.fn() };
 
     service = new PaymentsService(
       transactionModel as never,
@@ -46,6 +48,7 @@ describe('PaymentsService', () => {
       paymentNotificationPort,
       auditService as never,
       notificationsService as never,
+      schoolPaymentsService as never,
     );
   });
 
@@ -89,6 +92,10 @@ describe('PaymentsService', () => {
     });
     schoolPaymentModel.create.mockResolvedValue({ _id: schoolPaymentId });
     paymentNotificationPort.dispatch.mockResolvedValue('sent');
+    schoolPaymentsService.recordMemberPayment.mockReturnValue({
+      receiptNo: 'RCP-2026-9999',
+      invoiceNo: 'INV-2026-0001',
+    });
 
     const result = await service.createSchoolPayment(currentUser, {
       accountId: accountId.toString(),
@@ -110,14 +117,20 @@ describe('PaymentsService', () => {
         status: 'successful',
       }),
     );
+    expect(schoolPaymentsService.recordMemberPayment).toHaveBeenCalledWith({
+      studentId: 'ST-1001',
+      schoolName: 'Blue Nile Academy',
+      amount: 1500,
+      channel: 'mobile',
+    });
     expect(notificationsService.createNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'payment_success',
         status: 'sent',
         entityType: 'school_payment',
-        actionLabel: 'Open receipts',
+        actionLabel: 'Open school payment',
         priority: 'normal',
-        deepLink: '/payments/receipts?filter=school',
+        deepLink: '/school-payment/ST-1001',
       }),
     );
     expect(auditService.logActorAction).toHaveBeenCalledWith(

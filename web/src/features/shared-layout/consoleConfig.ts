@@ -11,6 +11,13 @@ import {
 export type ConsoleNavKey =
   | 'dashboard'
   | 'schoolConsole'
+  | 'schoolDashboard'
+  | 'schoolStudents'
+  | 'schoolBilling'
+  | 'schoolPayments'
+  | 'schoolReports'
+  | 'schoolCommunication'
+  | 'schoolSettings'
   | 'members'
   | 'loans'
   | 'autopayOps'
@@ -122,8 +129,8 @@ const headOfficeDefinition: ConsoleDefinition = {
     },
     {
       key: 'schoolConsole',
-      label: 'School Console',
-      description: 'School onboarding, student registry, invoicing, and reconciliation.',
+      label: 'Bank School Console',
+      description: 'School onboarding, student-account linking, payment operations, notifications, and reconciliation.',
     },
     {
       key: 'loans',
@@ -194,14 +201,44 @@ const supportDefinition: ConsoleDefinition = {
 export function getConsoleDefinition(session: AppSession): ConsoleDefinition {
   if (isSchoolSession(session)) {
     return {
-      title: 'School Console',
-      subtitle: 'Student registry, school billing, collections, onboarding, and parent-payment operations.',
-      summaryLabel: 'School operations',
+      title: 'School SIS',
+      subtitle: 'Student registry, parent linking, billing status, reports, and communication for one school.',
+      summaryLabel: 'School information system',
       navItems: [
         {
-          key: 'schoolConsole',
-          label: 'School Console',
-          description: 'School workspace for registry, billing, collections, and onboarding.',
+          key: 'schoolDashboard',
+          label: 'Dashboard',
+          description: 'Students, invoices, overdue posture, and daily action items.',
+        },
+        {
+          key: 'schoolStudents',
+          label: 'Students',
+          description: 'Student registry, parent links, search, and filters.',
+        },
+        {
+          key: 'schoolBilling',
+          label: 'Billing',
+          description: 'Monthly fee setup, invoice creation, due dates, and penalties.',
+        },
+        {
+          key: 'schoolPayments',
+          label: 'Payments',
+          description: 'Collection totals, daily payment summary, and transaction history.',
+        },
+        {
+          key: 'schoolReports',
+          label: 'Reports',
+          description: 'Collection reports, overdue summaries, and billing trends.',
+        },
+        {
+          key: 'schoolCommunication',
+          label: 'Communication',
+          description: 'Reminder queues and school announcements for parents.',
+        },
+        {
+          key: 'schoolSettings',
+          label: 'Settings',
+          description: 'School profile, branch context, and billing policy defaults.',
         },
       ],
     };

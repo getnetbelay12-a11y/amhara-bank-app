@@ -88,87 +88,167 @@ export function DistrictManagerDashboardPage({
 
   return (
     <DashboardPage>
-      <ConsoleKpiStrip
-        items={[
-          { icon: 'BR', label: 'Branches', value: commandCenter ? commandCenter.branchList.length.toLocaleString() : 'Not available', trend: 'District coverage', trendDirection: 'neutral' },
-          { icon: 'LN', label: 'Loans', value: commandCenter ? commandCenter.loanApprovalsPerBranch.reduce((sum, item) => sum + item.approvedCount, 0).toLocaleString() : 'Not available', trend: 'Approved', trendDirection: 'up' },
-          { icon: 'KY', label: 'KYC Completion', value: commandCenter ? `${commandCenter.kycCompletion.completionRate}%` : 'Not available', trend: `${commandCenter?.kycCompletion.pendingReview ?? 0} pending`, trendDirection: 'neutral' },
-          { icon: 'SP', label: 'Support Backlog', value: commandCenter ? commandCenter.supportMetrics.openChats.toLocaleString() : 'Not available', trend: `${commandCenter?.supportMetrics.escalatedChats ?? 0} escalated`, trendDirection: 'down' },
-          { icon: 'AL', label: 'Alerts', value: watchlist.length.toLocaleString(), trend: 'Branches on watch', trendDirection: watchlist.length > 0 ? 'down' : 'up' },
-        ]}
-      />
+      <div className="district-page">
+        <section className="district-mission-grid">
+          <article className="district-mission-card district-mission-card-primary">
+            <div className="district-mission-copy">
+              <span className="eyebrow">District command</span>
+              <h3>Guide branch execution with faster approvals, cleaner KYC flow, and lower support pressure.</h3>
+              <p>Focus the district on high-performing branches first, then clear branches that are drifting on response time or queue posture.</p>
+            </div>
+            <div className="district-mission-stats">
+              <div>
+                <span>Branches</span>
+                <strong>{commandCenter ? commandCenter.branchList.length.toLocaleString() : 'Not available'}</strong>
+              </div>
+              <div>
+                <span>Approvals</span>
+                <strong>{commandCenter ? commandCenter.loanApprovalsPerBranch.reduce((sum, item) => sum + item.approvedCount, 0).toLocaleString() : 'Not available'}</strong>
+              </div>
+              <div>
+                <span>Top branch</span>
+                <strong>{topRankedBranch?.name ?? 'Waiting for ranking'}</strong>
+              </div>
+              <div>
+                <span>KYC posture</span>
+                <strong>{commandCenter ? `${commandCenter.kycCompletion.completionRate}% complete` : 'Not available'}</strong>
+              </div>
+            </div>
+          </article>
 
-      <CriticalActionStrip
-        items={[
-          { label: 'Overdue Loans', value: watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString(), tone: 'red' },
-          { label: 'Missing Documents', value: commandCenter ? commandCenter.kycCompletion.needsAction.toLocaleString() : '0', tone: 'orange' },
-          { label: 'Support Backlog', value: commandCenter ? commandCenter.supportMetrics.openChats.toLocaleString() : '0', tone: 'amber' },
-          { label: 'KYC Exceptions', value: commandCenter ? commandCenter.kycCompletion.pendingReview.toLocaleString() : '0', tone: 'amber' },
-        ]}
-      />
+          <article className="district-mission-card district-mission-card-risk">
+            <span className="eyebrow">Priority signals</span>
+            <h3>District attention</h3>
+            <ul className="district-priority-list">
+              <li>
+                <span>Escalation load</span>
+                <strong>{watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString()} overdue loans require district action.</strong>
+              </li>
+              <li>
+                <span>Support pressure</span>
+                <strong>{commandCenter?.supportMetrics.escalatedChats.toLocaleString() ?? '0'} chats escalated above branch handling.</strong>
+              </li>
+              <li>
+                <span>Document risk</span>
+                <strong>{commandCenter?.kycCompletion.needsAction.toLocaleString() ?? '0'} members need document correction.</strong>
+              </li>
+            </ul>
+          </article>
 
-      <DashboardGrid>
-        <DashboardSectionCard
-          title="District Performance"
-          description="Branch ranking and district execution in one compact view."
-          action={
-            <label className="field-stack">
-              <span>Period</span>
-              <select
-                value={period}
-                onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
-              >
-                {periods.map((item) => (
-                  <option key={item} value={item}>
-                    {formatLabel(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          }
-        >
-          <div className="flex flex-col gap-3">
-            <DashboardMetricRow
-              label="Top Branch"
-              value={topRankedBranch ? `${topRankedBranch.score} score` : 'Not available'}
-              note={topRankedBranch?.name ?? 'No ranked branch yet'}
-            />
-            {commandCenter?.branchRanking.slice(0, 4).map((branch) => (
-              <DashboardProgressRow
-                key={branch.name}
-                label={branch.name}
-                value={`${branch.score} score`}
-                progress={Math.min(branch.score, 100)}
-                tone={branch.score >= 85 ? 'green' : branch.score >= 70 ? 'blue' : 'amber'}
+          <article className="district-mission-card district-mission-card-actions">
+            <span className="eyebrow">Execution snapshot</span>
+            <h3>What to push next</h3>
+            <ol className="district-action-ladder">
+              <li>
+                <div className="district-action-ladder-copy">
+                  <strong>{topApprovalBranch?.branchName ?? 'No branch selected'}</strong>
+                  <p>Lead branch on approvals with {topApprovalBranch?.approvedCount.toLocaleString() ?? '0'} completed this period.</p>
+                </div>
+              </li>
+              <li>
+                <div className="district-action-ladder-copy">
+                  <strong>{commandCenter?.supportMetrics.openChats.toLocaleString() ?? '0'} open chats</strong>
+                  <p>Balance support queues before escalations spill into district intervention.</p>
+                </div>
+              </li>
+              <li>
+                <div className="district-action-ladder-copy">
+                  <strong>{watchlist.length.toLocaleString()} branches on watch</strong>
+                  <p>Coach branches with weak score or rising pending task levels first.</p>
+                </div>
+              </li>
+            </ol>
+          </article>
+        </section>
+
+        <ConsoleKpiStrip
+          items={[
+            { icon: 'BR', label: 'Branches', value: commandCenter ? commandCenter.branchList.length.toLocaleString() : 'Not available', trend: 'District coverage', trendDirection: 'neutral' },
+            { icon: 'LN', label: 'Loans', value: commandCenter ? commandCenter.loanApprovalsPerBranch.reduce((sum, item) => sum + item.approvedCount, 0).toLocaleString() : 'Not available', trend: 'Approved', trendDirection: 'up' },
+            { icon: 'KY', label: 'KYC Completion', value: commandCenter ? `${commandCenter.kycCompletion.completionRate}%` : 'Not available', trend: `${commandCenter?.kycCompletion.pendingReview ?? 0} pending`, trendDirection: 'neutral' },
+            { icon: 'SP', label: 'Support Backlog', value: commandCenter ? commandCenter.supportMetrics.openChats.toLocaleString() : 'Not available', trend: `${commandCenter?.supportMetrics.escalatedChats ?? 0} escalated`, trendDirection: 'down' },
+            { icon: 'AL', label: 'Alerts', value: watchlist.length.toLocaleString(), trend: 'Branches on watch', trendDirection: watchlist.length > 0 ? 'down' : 'up' },
+          ]}
+        />
+
+        <CriticalActionStrip
+          items={[
+            { label: 'Overdue Loans', value: watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString(), tone: 'red' },
+            { label: 'Missing Documents', value: commandCenter ? commandCenter.kycCompletion.needsAction.toLocaleString() : '0', tone: 'orange' },
+            { label: 'Support Backlog', value: commandCenter ? commandCenter.supportMetrics.openChats.toLocaleString() : '0', tone: 'amber' },
+            { label: 'KYC Exceptions', value: commandCenter ? commandCenter.kycCompletion.pendingReview.toLocaleString() : '0', tone: 'amber' },
+          ]}
+        />
+
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="District Performance"
+            description="Branch ranking and district execution in one compact view."
+            action={
+              <label className="field-stack">
+                <span>Period</span>
+                <select
+                  value={period}
+                  onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
+                >
+                  {periods.map((item) => (
+                    <option key={item} value={item}>
+                      {formatLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            }
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Top Branch"
+                value={topRankedBranch ? `${topRankedBranch.score} score` : 'Not available'}
+                note={topRankedBranch?.name ?? 'No ranked branch yet'}
               />
-            ))}
-          </div>
-        </DashboardSectionCard>
+              {(commandCenter?.branchRanking.length ?? 0) > 0 ? (
+                commandCenter?.branchRanking.slice(0, 4).map((branch) => (
+                  <DashboardProgressRow
+                    key={branch.name}
+                    label={branch.name}
+                    value={`${branch.score} score`}
+                    progress={Math.min(branch.score, 100)}
+                    tone={branch.score >= 85 ? 'green' : branch.score >= 70 ? 'blue' : 'amber'}
+                  />
+                ))
+              ) : (
+                <EmptyStateCard
+                  title="No branch ranking yet"
+                  description="District branch scoring will appear here once branch performance data is available."
+                />
+              )}
+            </div>
+          </DashboardSectionCard>
 
-        <DashboardSectionCard
-          title="Support Overview"
-          description="Open chat pressure, assignment load, and response posture."
-          action={<QuickActionChip label={`${commandCenter?.supportMetrics.assignedChats ?? 0} assigned`} />}
-        >
-          <div className="flex flex-col gap-3">
-            <DashboardMetricRow
-              label="Open Chats"
-              value={commandCenter?.supportMetrics.openChats.toLocaleString() ?? '0'}
-              note={`${commandCenter?.supportMetrics.assignedChats.toLocaleString() ?? '0'} assigned`}
-            />
-            <DashboardMetricRow
-              label="Escalated"
-              value={commandCenter?.supportMetrics.escalatedChats.toLocaleString() ?? '0'}
-              note="District queue requiring intervention"
-            />
-            <DashboardMetricRow
-              label="Response"
-              value={kpis ? `${kpis.responseTimeMinutes} min` : 'Not available'}
-              note="Average handling time"
-            />
-          </div>
-        </DashboardSectionCard>
-      </DashboardGrid>
+          <DashboardSectionCard
+            title="Support Overview"
+            description="Open chat pressure, assignment load, and response posture."
+            action={<QuickActionChip label={`${commandCenter?.supportMetrics.assignedChats ?? 0} assigned`} />}
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Open Chats"
+                value={commandCenter?.supportMetrics.openChats.toLocaleString() ?? '0'}
+                note={`${commandCenter?.supportMetrics.assignedChats.toLocaleString() ?? '0'} assigned`}
+              />
+              <DashboardMetricRow
+                label="Escalated"
+                value={commandCenter?.supportMetrics.escalatedChats.toLocaleString() ?? '0'}
+                note="District queue requiring intervention"
+              />
+              <DashboardMetricRow
+                label="Response"
+                value={kpis ? `${kpis.responseTimeMinutes} min` : 'Not available'}
+                note="Average handling time"
+              />
+            </div>
+          </DashboardSectionCard>
+        </DashboardGrid>
 
       <DashboardGrid>
         <DashboardPipelineCard
@@ -187,7 +267,7 @@ export function DistrictManagerDashboardPage({
           title="KYC Status"
           description="Completion posture across the district branch network."
         >
-          <div className="flex flex-col gap-3">
+          <div className="dashboard-stack">
             <DashboardMetricRow
               label="Completion Rate"
               value={`${kycCompletionRate}%`}
@@ -312,7 +392,7 @@ export function DistrictManagerDashboardPage({
                   `${item.responseTimeMinutes} min`,
                   item.score.toLocaleString(),
                 ])
-              : [['Loading', '...', '...', '...', '...']]
+              : [['No branch data yet', '-', '-', '-', '-']]
           }
         />
 
@@ -320,27 +400,35 @@ export function DistrictManagerDashboardPage({
           title="Approval Output"
           description="Branch lending throughput and watchlist focus."
         >
-          <div className="flex flex-col gap-3">
+          <div className="dashboard-stack">
             <DashboardMetricRow
               label="Top Approval Branch"
               value={topApprovalBranch?.approvedCount.toLocaleString() ?? '0'}
               note={topApprovalBranch?.branchName ?? 'Not available'}
             />
-            {commandCenter?.loanApprovalsPerBranch.slice(0, 4).map((item) => (
-              <DashboardProgressRow
-                key={item.branchName}
-                label={item.branchName}
-                value={`${item.approvedCount} approved`}
-                progress={Math.min(
-                  Math.round((item.approvedCount / Math.max(topApprovalBranch?.approvedCount ?? 1, 1)) * 100),
-                  100,
-                )}
-                tone="green"
+            {(commandCenter?.loanApprovalsPerBranch.length ?? 0) > 0 ? (
+              commandCenter?.loanApprovalsPerBranch.slice(0, 4).map((item) => (
+                <DashboardProgressRow
+                  key={item.branchName}
+                  label={item.branchName}
+                  value={`${item.approvedCount} approved`}
+                  progress={Math.min(
+                    Math.round((item.approvedCount / Math.max(topApprovalBranch?.approvedCount ?? 1, 1)) * 100),
+                    100,
+                  )}
+                  tone="green"
+                />
+              ))
+            ) : (
+              <EmptyStateCard
+                title="No approval output yet"
+                description="Branch approval throughput will appear here once district approvals are recorded."
               />
-            ))}
+            )}
           </div>
         </DashboardSectionCard>
-      </DashboardGrid>
+        </DashboardGrid>
+      </div>
     </DashboardPage>
   );
 }

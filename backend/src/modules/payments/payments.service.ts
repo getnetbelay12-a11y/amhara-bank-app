@@ -19,6 +19,7 @@ import { AuditService } from '../audit/audit.service';
 import { Member, MemberDocument } from '../members/schemas/member.schema';
 import { buildSchoolPaymentNotification } from '../notifications/banking-notification-builders';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SchoolPaymentsService } from '../school-payments/school-payments.service';
 import {
   ServiceRequest,
   ServiceRequestDocument,
@@ -66,6 +67,7 @@ export class PaymentsService {
     private readonly paymentNotificationPort: PaymentNotificationPort,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
+    private readonly schoolPaymentsService: SchoolPaymentsService,
   ) {}
 
   async createSchoolPayment(
@@ -132,6 +134,13 @@ export class PaymentsService {
       status: 'successful',
     });
 
+    const schoolCollection = this.schoolPaymentsService.recordMemberPayment({
+      studentId: dto.studentId,
+      schoolName: dto.schoolName,
+      amount: dto.amount,
+      channel: dto.channel,
+    });
+
     const notificationStatus = await this.paymentNotificationPort.dispatch({
       userId: currentUser.sub,
       title: 'School Payment Successful',
@@ -155,9 +164,13 @@ export class PaymentsService {
       message: notification.message,
       entityType: 'school_payment',
       entityId: schoolPayment._id.toString(),
-      actionLabel: 'Open receipts',
+      actionLabel: 'Open school payment',
       priority: 'normal',
-      deepLink: '/payments/receipts?filter=school',
+      deepLink: `/school-payment/${dto.studentId}`,
+      dataPayload: {
+        profileId: dto.studentId,
+        route: `/school-payment/${dto.studentId}`,
+      },
     });
 
     await this.auditService.logActorAction({
@@ -174,6 +187,8 @@ export class PaymentsService {
         status: 'successful',
         accountBalanceAfter: account.balance,
         memberKycStatus: member.kycStatus,
+        schoolCollectionReceiptNo: schoolCollection?.receiptNo,
+        schoolCollectionInvoiceNo: schoolCollection?.invoiceNo,
       },
     });
 

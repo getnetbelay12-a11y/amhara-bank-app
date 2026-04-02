@@ -9,7 +9,7 @@ type CriticalActionItem = {
 
 export function CriticalActionStrip({ items }: { items: CriticalActionItem[] }) {
   return (
-    <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <section className="critical-action-strip">
       {items.map((item) => (
         <DashboardAlertCard
           key={item.label}

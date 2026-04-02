@@ -39,6 +39,7 @@ import { SupportModule } from './modules/support/support.module';
 import { VotingModule } from './modules/voting/voting.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { CardManagementModule } from './modules/card-management/card-management.module';
+import { DemoModule } from './modules/demo/demo.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { InsightsModule } from './modules/insights/insights.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
@@ -117,6 +118,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
     ReportsModule,
     UploadsModule,
     InsightsModule,
+    DemoModule,
   ],
   controllers: [HealthController],
 })

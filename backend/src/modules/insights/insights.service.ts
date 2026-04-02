@@ -229,17 +229,50 @@ export class InsightsService {
     loanRepayments: TransactionDocument[],
     now: Date,
   ): InsightCandidate[] {
+    const workflowLoans = loans.filter((loan) =>
+      ['submitted', 'branch_review', 'district_review', 'head_office_review'].includes(
+        loan.status,
+      ),
+    );
     const activeLoans = loans.filter((loan) =>
       ['approved', 'disbursed'].includes(loan.status),
     );
+    const items: InsightCandidate[] = [];
+
+    for (const loan of workflowLoans) {
+      items.push(
+        this.createInsight(
+          {
+            id: `loan-workflow-${loan._id.toString()}`,
+            type: 'loan_status',
+            priority: loan.status === 'head_office_review' ? 'high' : 'medium',
+            title: 'Loan workflow update',
+            message: `Your ${loan.loanType.toLowerCase()} loan is currently at ${loan.status.replaceAll(
+              '_',
+              ' ',
+            )}.`,
+            actionLabel: 'View Loan',
+            actionRoute: `/loans/${loan._id.toString()}`,
+            dueAt: this.toIsoDate(now),
+            metadata: {
+              loanId: loan._id.toString(),
+              currentLevel: loan.currentLevel,
+              status: loan.status,
+            },
+          },
+          85,
+        ),
+      );
+    }
 
     if (activeLoans.length === 0) {
-      return [];
+      return items;
     }
 
     const latestRepaymentAt = loanRepayments[0]?.createdAt;
 
-    return activeLoans.flatMap((loan) => {
+    items.push(
+      ...activeLoans.flatMap((loan) => {
       const anchor = latestRepaymentAt ?? loan.updatedAt ?? loan.createdAt ?? now;
       const daysSinceAnchor = this.daysBetween(anchor, now);
 
@@ -284,7 +317,10 @@ export class InsightsService {
       }
 
       return [];
-    });
+      }),
+    );
+
+    return items;
   }
 
   private buildInsuranceInsights(

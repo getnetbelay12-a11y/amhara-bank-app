@@ -260,23 +260,96 @@ export function ManagerNotificationCenterPage({
 
   return (
     <DashboardPage>
-      {returnContextLabel && onReturnToContext ? (
-        <div className="loan-return-banner">
-          <div>
-            <strong>Opened from {returnContextLabel}</strong>
-            <span>Return to your dashboard context without losing the notification handoff.</span>
+      <div className="console-focus-page notifications-page">
+        {returnContextLabel && onReturnToContext ? (
+          <div className="loan-return-banner">
+            <div>
+              <strong>Opened from {returnContextLabel}</strong>
+              <span>Return to your dashboard context without losing the notification handoff.</span>
+            </div>
+            <button
+              type="button"
+              className="loan-return-button"
+              onClick={onReturnToContext}
+            >
+              Back to {returnContextLabel}
+            </button>
           </div>
-          <button
-            type="button"
-            className="loan-return-button"
-            onClick={onReturnToContext}
-          >
-            Back to {returnContextLabel}
-          </button>
-        </div>
-      ) : null}
+        ) : null}
 
-      <ConsoleKpiStrip
+        <section className="console-command-grid">
+          <article className="console-command-card console-command-card-primary">
+            <div className="console-command-copy">
+              <span className="eyebrow">Notification command</span>
+              <h3>Run reminders like a banking operations desk with clean previews, visible delivery pressure, and focused campaign scope.</h3>
+              <p>Keep communication action-first instead of forcing staff through long setup blocks before they understand queue health.</p>
+            </div>
+            <div className="console-command-stats">
+              <div>
+                <span>Campaigns</span>
+                <strong>{campaigns.length.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Recipients</span>
+                <strong>{recentNotifications.length.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Insurance alerts</span>
+                <strong>{alertsNeedingAction.toLocaleString()}</strong>
+              </div>
+              <div>
+                <span>Scope</span>
+                <strong>{scopeLabel}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="console-command-card console-command-card-warning">
+            <span className="eyebrow">Priority signals</span>
+            <h3>Delivery pressure</h3>
+            <ul className="console-priority-list">
+              <li>
+                <span>Loan reminders</span>
+                <strong>{recentNotifications.filter((item) => item.type.includes('loan')).length.toLocaleString()} recent loan-related notifications are in circulation.</strong>
+              </li>
+              <li>
+                <span>Failures</span>
+                <strong>{logs.filter((item) => item.status === 'failed').length.toLocaleString()} delivery attempts have failed and need review.</strong>
+              </li>
+              <li>
+                <span>Insurance action</span>
+                <strong>{alertsNeedingAction.toLocaleString()} members need insurance-linked reminder follow-up.</strong>
+              </li>
+            </ul>
+          </article>
+
+          <article className="console-command-card console-command-card-secondary">
+            <span className="eyebrow">Execution snapshot</span>
+            <h3>What managers should do</h3>
+            <ol className="console-action-ladder">
+              <li>
+                <div>
+                  <strong>{campaigns.filter((item) => item.status === 'draft').length.toLocaleString()} draft campaigns</strong>
+                  <p>Finalize priority drafts before building more message batches.</p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong>{campaigns.filter((item) => item.channels.includes('mobile_push')).length.toLocaleString()} push campaigns</strong>
+                  <p>Use in-app delivery first for time-sensitive nudges and workflow reminders.</p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong>{campaigns.filter((item) => item.category === 'payment').length.toLocaleString()} payment reminders</strong>
+                  <p>Keep school and payment campaigns visible because they drive the strongest demo flow.</p>
+                </div>
+              </li>
+            </ol>
+          </article>
+        </section>
+
+        <ConsoleKpiStrip
         items={[
           { icon: 'CU', label: 'Customers', value: recentNotifications.length.toLocaleString(), trend: 'Recipients in scope', trendDirection: 'neutral' },
           { icon: 'LN', label: 'Loans', value: campaigns.filter((item) => item.category === 'loan').length.toLocaleString(), trend: 'Loan campaigns', trendDirection: 'up' },
@@ -298,129 +371,149 @@ export function ManagerNotificationCenterPage({
         <DashboardSectionCard
           title="Create Reminder Campaign"
           description="Choose category, template, channels, target scope, preview, and send."
+          className="panel"
           action={<QuickActionChip label={scopeLabel} />}
         >
-          <div className="form-grid">
-            <label className="field-stack">
-              <span>Category</span>
-              <select value={category} onChange={(event) => setCategory(event.target.value as NotificationCategory)}>
-                <option value="loan">Loan</option>
-                <option value="insurance">Insurance</option>
-                <option value="payment">Payment</option>
-                <option value="support">Support</option>
-                <option value="security">Security</option>
-                <option value="system">System</option>
-                <option value="kyc">KYC</option>
-                <option value="autopay">AutoPay</option>
-                <option value="shareholder">Shareholder</option>
-              </select>
-            </label>
+          <div className="notification-builder-grid">
+            <section className="notification-builder-section">
+              <div className="notification-builder-header">
+                <span className="eyebrow">Campaign setup</span>
+                <h3>Template and audience</h3>
+              </div>
+              <div className="form-grid">
+                <label className="field-stack">
+                  <span>Category</span>
+                  <select value={category} onChange={(event) => setCategory(event.target.value as NotificationCategory)}>
+                    <option value="loan">Loan</option>
+                    <option value="insurance">Insurance</option>
+                    <option value="payment">Payment</option>
+                    <option value="support">Support</option>
+                    <option value="security">Security</option>
+                    <option value="system">System</option>
+                    <option value="kyc">KYC</option>
+                    <option value="autopay">AutoPay</option>
+                    <option value="shareholder">Shareholder</option>
+                  </select>
+                </label>
 
-            <label className="field-stack">
-              <span>Template</span>
-              <select
-                value={templateType}
-                onChange={(event) => {
-                  const selected = filteredTemplates.find(
-                    (item) => item.templateType === event.target.value,
-                  );
-                  setTemplateType(event.target.value);
-                  if (selected) {
-                    setSubject(selected.subject ?? selected.title);
-                    setMessageBody(selected.messageBody);
-                    setSelectedChannels(selected.channelDefaults);
-                  }
-                }}
-              >
-                {filteredTemplates.map((item) => (
-                  <option key={item.id} value={item.templateType}>
-                    {item.title}
-                  </option>
+                <label className="field-stack">
+                  <span>Template</span>
+                  <select
+                    value={templateType}
+                    onChange={(event) => {
+                      const selected = filteredTemplates.find(
+                        (item) => item.templateType === event.target.value,
+                      );
+                      setTemplateType(event.target.value);
+                      if (selected) {
+                        setSubject(selected.subject ?? selected.title);
+                        setMessageBody(selected.messageBody);
+                        setSelectedChannels(selected.channelDefaults);
+                      }
+                    }}
+                  >
+                    {filteredTemplates.map((item) => (
+                      <option key={item.id} value={item.templateType}>
+                        {item.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-stack">
+                  <span>Target Type</span>
+                  <select
+                    value={targetType}
+                    onChange={(event) =>
+                      setTargetType(
+                        event.target.value as
+                          | 'single_customer'
+                          | 'selected_customers'
+                          | 'filtered_customers',
+                      )
+                    }
+                  >
+                    <option value="single_customer">Single customer</option>
+                    <option value="selected_customers">Selected customers</option>
+                    <option value="filtered_customers">Filtered customers</option>
+                  </select>
+                </label>
+
+                <label className="field-stack">
+                  <span>Target IDs</span>
+                  <input
+                    placeholder="AMH-100001, AMH-100003"
+                    value={targetIds}
+                    onChange={(event) => setTargetIds(event.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="notification-builder-section notification-builder-section-muted">
+              <div className="notification-builder-header">
+                <span className="eyebrow">Delivery channels</span>
+                <h3>Choose where the reminder goes</h3>
+              </div>
+              <div className="channel-row">
+                {allChannels.map((channel) => (
+                  <button
+                    key={channel}
+                    className={
+                      selectedChannels.includes(channel)
+                        ? 'channel-chip active'
+                        : 'channel-chip'
+                    }
+                    onClick={() =>
+                      setSelectedChannels((current) =>
+                        current.includes(channel)
+                          ? current.filter((item) => item !== channel)
+                          : [...current, channel],
+                      )
+                    }
+                    type="button"
+                  >
+                    {formatLabel(channel)}
+                  </button>
                 ))}
-              </select>
-            </label>
-
-            <label className="field-stack">
-              <span>Target Type</span>
-              <select
-                value={targetType}
-                onChange={(event) =>
-                  setTargetType(
-                    event.target.value as
-                      | 'single_customer'
-                      | 'selected_customers'
-                      | 'filtered_customers',
-                  )
-                }
-              >
-                <option value="single_customer">Single customer</option>
-                <option value="selected_customers">Selected customers</option>
-                <option value="filtered_customers">Filtered customers</option>
-              </select>
-            </label>
-
-            <label className="field-stack">
-              <span>Target IDs</span>
-              <input
-                placeholder="AMH-100001, AMH-100003"
-                value={targetIds}
-                onChange={(event) => setTargetIds(event.target.value)}
-              />
-            </label>
+              </div>
+              <div className="notification-helper-copy">
+                <p>
+                  Local email testing uses <strong>{localDemoRecipient}</strong> as the
+                  sample reminder recipient whenever Email is selected.
+                </p>
+                <p>
+                  Telegram reminders are sent only to customers who have connected the
+                  Amhara Bank Telegram bot. Customers without Telegram linkage are skipped
+                  for Telegram delivery.
+                </p>
+              </div>
+            </section>
           </div>
 
-          <div className="channel-row">
-            {allChannels.map((channel) => (
-              <button
-                key={channel}
-                className={
-                  selectedChannels.includes(channel)
-                    ? 'channel-chip active'
-                    : 'channel-chip'
-                }
-                onClick={() =>
-                  setSelectedChannels((current) =>
-                    current.includes(channel)
-                      ? current.filter((item) => item !== channel)
-                      : [...current, channel],
-                  )
-                }
-                type="button"
-              >
-                {formatLabel(channel)}
-              </button>
-            ))}
-          </div>
+          <section className="notification-builder-section">
+            <div className="notification-builder-header">
+              <span className="eyebrow">Message copy</span>
+              <h3>Reminder content</h3>
+            </div>
+            <div className="form-grid">
+              <label className="field-stack field-span">
+                <span>Subject</span>
+                <input value={subject} onChange={(event) => setSubject(event.target.value)} />
+              </label>
 
-          <div className="muted">
-            <p>
-              Local email testing uses <strong>{localDemoRecipient}</strong> as the
-              sample reminder recipient whenever Email is selected.
-            </p>
-            <p>
-              Telegram reminders are sent only to customers who have connected the
-              Amhara Bank Telegram bot. Customers without Telegram linkage are skipped
-              for Telegram delivery.
-            </p>
-          </div>
+              <label className="field-stack field-span">
+                <span>Intro / Body Note</span>
+                <textarea
+                  rows={5}
+                  value={messageBody}
+                  onChange={(event) => setMessageBody(event.target.value)}
+                />
+              </label>
+            </div>
+          </section>
 
-          <div className="form-grid">
-            <label className="field-stack field-span">
-              <span>Subject</span>
-              <input value={subject} onChange={(event) => setSubject(event.target.value)} />
-            </label>
-
-            <label className="field-stack field-span">
-              <span>Intro / Body Note</span>
-              <textarea
-                rows={5}
-                value={messageBody}
-                onChange={(event) => setMessageBody(event.target.value)}
-              />
-            </label>
-          </div>
-
-          <div className="support-detail-panel">
+          <section className="notification-builder-section notification-builder-preview">
             <div>
               <strong>{previewHeading}</strong>
               <p className="muted" style={{ marginTop: 8 }}>
@@ -453,7 +546,7 @@ export function ManagerNotificationCenterPage({
                 <TelegramReminderPreview message={telegramPreview} />
               </div>
             ) : null}
-          </div>
+          </section>
 
           {formError ? <p className="muted" style={{ color: '#b42318' }}>{formError}</p> : null}
           {formSuccess ? <p className="muted" style={{ color: '#027a48' }}>{formSuccess}</p> : null}
@@ -503,9 +596,21 @@ export function ManagerNotificationCenterPage({
           description="Latest sent alerts with workflow jump actions."
           headers={['Type', 'Recipient', 'Status', 'Sent', 'Action']}
           rows={recentNotifications.map((item) => [
-            formatLabel(item.type),
+            <span className="table-status-badge neutral" key={`${item.userId}-${item.sentAt}-${item.type}`}>
+              {formatLabel(item.type)}
+            </span>,
             item.userLabel,
-            formatLabel(item.status),
+            <span
+              className={`table-status-badge ${
+                item.status === 'failed'
+                  ? 'critical'
+                  : item.status === 'pending'
+                    ? 'warning'
+                    : 'positive'
+              }`}
+            >
+              {formatLabel(item.status)}
+            </span>,
             item.sentAt,
             renderNotificationAction(item, onOpenPaymentReceipts),
           ])}
@@ -517,9 +622,17 @@ export function ManagerNotificationCenterPage({
           headers={['Customer', 'Alert', 'Policy', 'Action']}
           rows={alerts.map((item) => [
             `${item.memberName} (${item.customerId})`,
-            formatLabel(item.alertType),
+            <span
+              className={`table-status-badge ${
+                item.requiresManagerAction ? 'critical' : 'warning'
+              }`}
+            >
+              {formatLabel(item.alertType)}
+            </span>,
             item.policyNumber ?? 'No linked policy',
-            item.requiresManagerAction ? 'Review now' : 'Monitor',
+            <span className={`table-status-badge ${item.requiresManagerAction ? 'critical' : 'neutral'}`}>
+              {item.requiresManagerAction ? 'Review now' : 'Monitor'}
+            </span>,
           ])}
         />
       </DashboardGrid>
@@ -530,10 +643,28 @@ export function ManagerNotificationCenterPage({
           description="Manual reminder campaigns with current send state."
           headers={['Category', 'Template', 'Channels', 'Status']}
           rows={campaigns.map((item) => [
-            formatLabel(item.category),
+            <span className="table-status-badge neutral">{formatLabel(item.category)}</span>,
             formatLabel(item.templateType),
-            item.channels.map(formatLabel).join(', '),
-            formatLabel(item.status),
+            <span className="table-chip-group">
+              {item.channels.map((channel) => (
+                <span key={`${item.id}-${channel}`} className="table-chip">
+                  {formatLabel(channel)}
+                </span>
+              ))}
+            </span>,
+            <span
+              className={`table-status-badge ${
+                item.status === 'completed'
+                  ? 'positive'
+                  : item.status === 'draft'
+                    ? 'neutral'
+                    : item.status === 'failed'
+                      ? 'critical'
+                      : 'warning'
+              }`}
+            >
+              {formatLabel(item.status)}
+            </span>,
           ])}
         />
 
@@ -542,13 +673,26 @@ export function ManagerNotificationCenterPage({
           description="Per-recipient delivery result tracking across channels."
           headers={['Channel', 'Recipient', 'Status', 'Error']}
           rows={logs.map((item) => [
-            formatLabel(item.channel),
+            <span className="table-chip">{formatLabel(item.channel)}</span>,
             item.recipient,
-            formatLabel(item.status),
-            item.errorMessage ?? 'No error',
+            <span
+              className={`table-status-badge ${
+                item.status === 'delivered'
+                  ? 'positive'
+                  : item.status === 'failed'
+                    ? 'critical'
+                    : item.status === 'sent'
+                      ? 'neutral'
+                      : 'warning'
+              }`}
+            >
+              {formatLabel(item.status)}
+            </span>,
+            item.errorMessage ? <span className="table-status-badge critical subtle">{item.errorMessage}</span> : 'No error',
           ])}
         />
       </DashboardGrid>
+      </div>
     </DashboardPage>
   );
 }

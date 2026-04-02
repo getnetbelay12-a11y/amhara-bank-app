@@ -88,86 +88,166 @@ export function BranchManagerDashboardPage({
 
   return (
     <DashboardPage>
-      <ConsoleKpiStrip
-        items={[
-          { icon: 'EM', label: 'Employees', value: commandCenter ? commandCenter.employeePerformance.items.length.toLocaleString() : 'Not available', trend: 'Tracked staff', trendDirection: 'neutral' },
-          { icon: 'LN', label: 'Loan Queue', value: commandCenter ? commandCenter.loansHandled.toLocaleString() : 'Not available', trend: 'Branch workload', trendDirection: 'up' },
-          { icon: 'KY', label: 'KYC Queue', value: commandCenter ? commandCenter.kycCompleted.toLocaleString() : 'Not available', trend: 'Completed', trendDirection: 'up' },
-          { icon: 'CH', label: 'Open Chats', value: commandCenter ? commandCenter.supportHandled.toLocaleString() : 'Not available', trend: 'Support handled', trendDirection: 'neutral' },
-          { icon: 'AL', label: 'Alerts', value: watchlist.length.toLocaleString(), trend: 'Employees on watch', trendDirection: watchlist.length > 0 ? 'down' : 'up' },
-        ]}
-      />
+      <div className="branch-page">
+        <section className="branch-mission-grid">
+          <article className="branch-mission-card branch-mission-card-primary">
+            <div className="branch-mission-copy">
+              <span className="eyebrow">Branch command</span>
+              <h3>Run the branch like a live service desk: faster loan movement, cleaner KYC, and tighter follow-up on staff queues.</h3>
+              <p>Keep frontline execution visible so supervisors can spot bottlenecks before they become escalations.</p>
+            </div>
+            <div className="branch-mission-stats">
+              <div>
+                <span>Employees</span>
+                <strong>{commandCenter ? commandCenter.employeePerformance.items.length.toLocaleString() : 'Not available'}</strong>
+              </div>
+              <div>
+                <span>Loan queue</span>
+                <strong>{commandCenter ? commandCenter.loansHandled.toLocaleString() : 'Not available'}</strong>
+              </div>
+              <div>
+                <span>Top performer</span>
+                <strong>{topPerformer?.name ?? 'Waiting for ranking'}</strong>
+              </div>
+              <div>
+                <span>Queue pressure</span>
+                <strong>{queuePressure.toLocaleString()} active tasks</strong>
+              </div>
+            </div>
+          </article>
 
-      <CriticalActionStrip
-        items={[
-          { label: 'Overdue Loans', value: watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString(), tone: 'red' },
-          { label: 'Missing Documents', value: Math.max((kpis?.pendingApprovals ?? 0) - (commandCenter?.kycCompleted ?? 0), 0).toLocaleString(), tone: 'orange' },
-          { label: 'Support Backlog', value: commandCenter ? commandCenter.pendingTasks.toLocaleString() : '0', tone: 'amber' },
-          { label: 'KYC Exceptions', value: kpis ? kpis.pendingApprovals.toLocaleString() : '0', tone: 'amber' },
-        ]}
-      />
+          <article className="branch-mission-card branch-mission-card-risk">
+            <span className="eyebrow">Priority signals</span>
+            <h3>Frontline attention</h3>
+            <ul className="branch-priority-list">
+              <li>
+                <span>Overdue queue</span>
+                <strong>{watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString()} overdue loans are waiting for staff follow-up.</strong>
+              </li>
+              <li>
+                <span>KYC gaps</span>
+                <strong>{kycGap.toLocaleString()} members need KYC correction or completion.</strong>
+              </li>
+              <li>
+                <span>Staff watchlist</span>
+                <strong>{criticalEmployees.toLocaleString()} employees need coaching or reassignment.</strong>
+              </li>
+            </ul>
+          </article>
 
-      <DashboardGrid>
-        <DashboardSectionCard
-          title="Employee Performance"
-          description="Branch execution, top performers, and score posture."
-          action={
-            <label className="field-stack">
-              <span>Period</span>
-              <select
-                value={period}
-                onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
-              >
-                {periods.map((item) => (
-                  <option key={item} value={item}>
-                    {formatLabel(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          }
-        >
-          <div className="flex flex-col gap-3">
-            <DashboardMetricRow
-              label="Top Performer"
-              value={topPerformer ? `${topPerformer.score} score` : 'Not available'}
-              note={topPerformer?.name ?? 'No employee data'}
-            />
-            {topEmployees.slice(0, 4).map((item) => (
-              <DashboardProgressRow
-                key={item.entityId}
-                label={item.name}
-                value={`${item.score} score`}
-                progress={Math.min(item.score, 100)}
-                tone={item.score >= 85 ? 'green' : item.score >= 70 ? 'blue' : 'amber'}
+          <article className="branch-mission-card branch-mission-card-actions">
+            <span className="eyebrow">Execution snapshot</span>
+            <h3>What managers should do</h3>
+            <ol className="branch-action-ladder">
+              <li>
+                <div className="branch-action-ladder-copy">
+                  <strong>{topPerformer?.name ?? 'No employee selected'}</strong>
+                  <p>Best branch score at {topPerformer?.score.toLocaleString() ?? '0'} and ready for heavier queue share.</p>
+                </div>
+              </li>
+              <li>
+                <div className="branch-action-ladder-copy">
+                  <strong>{commandCenter?.supportHandled.toLocaleString() ?? '0'} support cases handled</strong>
+                  <p>Keep service response stable while clearing current pending tasks.</p>
+                </div>
+              </li>
+              <li>
+                <div className="branch-action-ladder-copy">
+                  <strong>{watchlist.length.toLocaleString()} employees on watch</strong>
+                  <p>Review staff with falling score or growing pending queue before SLA pressure rises.</p>
+                </div>
+              </li>
+            </ol>
+          </article>
+        </section>
+
+        <ConsoleKpiStrip
+          items={[
+            { icon: 'EM', label: 'Employees', value: commandCenter ? commandCenter.employeePerformance.items.length.toLocaleString() : 'Not available', trend: 'Tracked staff', trendDirection: 'neutral' },
+            { icon: 'LN', label: 'Loan Queue', value: commandCenter ? commandCenter.loansHandled.toLocaleString() : 'Not available', trend: 'Branch workload', trendDirection: 'up' },
+            { icon: 'KY', label: 'KYC Queue', value: commandCenter ? commandCenter.kycCompleted.toLocaleString() : 'Not available', trend: 'Completed', trendDirection: 'up' },
+            { icon: 'CH', label: 'Open Chats', value: commandCenter ? commandCenter.supportHandled.toLocaleString() : 'Not available', trend: 'Support handled', trendDirection: 'neutral' },
+            { icon: 'AL', label: 'Alerts', value: watchlist.length.toLocaleString(), trend: 'Employees on watch', trendDirection: watchlist.length > 0 ? 'down' : 'up' },
+          ]}
+        />
+
+        <CriticalActionStrip
+          items={[
+            { label: 'Overdue Loans', value: watchlist.reduce((sum, item) => sum + item.loansEscalated, 0).toLocaleString(), tone: 'red' },
+            { label: 'Missing Documents', value: Math.max((kpis?.pendingApprovals ?? 0) - (commandCenter?.kycCompleted ?? 0), 0).toLocaleString(), tone: 'orange' },
+            { label: 'Support Backlog', value: commandCenter ? commandCenter.pendingTasks.toLocaleString() : '0', tone: 'amber' },
+            { label: 'KYC Exceptions', value: kpis ? kpis.pendingApprovals.toLocaleString() : '0', tone: 'amber' },
+          ]}
+        />
+
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Employee Performance"
+            description="Branch execution, top performers, and score posture."
+            action={
+              <label className="field-stack">
+                <span>Period</span>
+                <select
+                  value={period}
+                  onChange={(event) => setPeriod(event.target.value as PerformancePeriod)}
+                >
+                  {periods.map((item) => (
+                    <option key={item} value={item}>
+                      {formatLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            }
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Top Performer"
+                value={topPerformer ? `${topPerformer.score} score` : 'Not available'}
+                note={topPerformer?.name ?? 'No employee data yet'}
               />
-            ))}
-          </div>
-        </DashboardSectionCard>
+              {topEmployees.length > 0 ? (
+                topEmployees.slice(0, 4).map((item) => (
+                  <DashboardProgressRow
+                    key={item.entityId}
+                    label={item.name}
+                    value={`${item.score} score`}
+                    progress={Math.min(item.score, 100)}
+                    tone={item.score >= 85 ? 'green' : item.score >= 70 ? 'blue' : 'amber'}
+                  />
+                ))
+              ) : (
+                <EmptyStateCard
+                  title="No employee ranking yet"
+                  description="Staff scoring will appear here once branch employee performance data is available."
+                />
+              )}
+            </div>
+          </DashboardSectionCard>
 
-        <DashboardSectionCard
-          title="Support Queue"
-          description="Open branch work, SLA pressure, and daily queue load."
-        >
-          <div className="flex flex-col gap-3">
-            <DashboardMetricRow
-              label="Pending Tasks"
-              value={queuePressure.toLocaleString()}
-              note="Current branch queue"
-            />
-            <DashboardMetricRow
-              label="Support Handled"
-              value={commandCenter?.supportHandled.toLocaleString() ?? '0'}
-              note="Completed customer issues"
-            />
-            <DashboardMetricRow
-              label="Critical Employees"
-              value={criticalEmployees.toLocaleString()}
-              note="Need coaching or intervention"
-            />
-          </div>
-        </DashboardSectionCard>
-      </DashboardGrid>
+          <DashboardSectionCard
+            title="Support Queue"
+            description="Open branch work, SLA pressure, and daily queue load."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Pending Tasks"
+                value={queuePressure.toLocaleString()}
+                note="Current branch queue"
+              />
+              <DashboardMetricRow
+                label="Support Handled"
+                value={commandCenter?.supportHandled.toLocaleString() ?? '0'}
+                note="Completed customer issues"
+              />
+              <DashboardMetricRow
+                label="Critical Employees"
+                value={criticalEmployees.toLocaleString()}
+                note="Need coaching or intervention"
+              />
+            </div>
+          </DashboardSectionCard>
+        </DashboardGrid>
 
       <DashboardGrid>
         <DashboardPipelineCard
@@ -186,7 +266,7 @@ export function BranchManagerDashboardPage({
           title="KYC Status"
           description="Queue posture for onboarding and document completion."
         >
-          <div className="flex flex-col gap-3">
+          <div className="dashboard-stack">
             <DashboardMetricRow
               label="KYC Completed"
               value={commandCenter?.kycCompleted.toLocaleString() ?? '0'}
@@ -320,7 +400,7 @@ export function BranchManagerDashboardPage({
                   item.transactionsProcessed.toLocaleString(),
                   item.score.toLocaleString(),
                 ])
-              : [['Loading', '...', '...', '...', '...']]
+              : [['No employee performance yet', '-', '-', '-', '-']]
           }
         />
 
@@ -339,10 +419,11 @@ export function BranchManagerDashboardPage({
                     ? 'Assign review'
                     : 'Coach',
                 ])
-              : [['Loading', '...', '...', '...', '...']]
+              : [['No employee watchlist', '-', '-', '-', '-']]
           }
         />
-      </DashboardGrid>
+        </DashboardGrid>
+      </div>
     </DashboardPage>
   );
 }

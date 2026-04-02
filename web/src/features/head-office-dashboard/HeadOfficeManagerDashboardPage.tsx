@@ -13,11 +13,13 @@ import type {
   SchoolConsoleOverview,
   SupportChatSummaryItem,
 } from '../../core/api/contracts';
+import { getAccessToken } from '../../core/api/httpApi';
 import type { AdminSession } from '../../core/session';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
 import {
   DashboardGrid,
+  DashboardMiniBars,
   DashboardMetricRow,
   DashboardPage,
   DashboardPipelineCard,
@@ -89,6 +91,8 @@ export function HeadOfficeManagerDashboardPage({
   const [autopayOperations, setAutopayOperations] = useState<AutopayOperationItem[]>([]);
   const [kycQueueCount, setKycQueueCount] = useState(0);
   const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(null);
+  const [demoMessage, setDemoMessage] = useState<string | null>(null);
+  const [demoBusy, setDemoBusy] = useState<'school' | 'chat' | 'loan' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,9 +178,126 @@ export function HeadOfficeManagerDashboardPage({
     filteredItems.find((item) => item.entityId === selectedDistrictId) ??
     items.find((item) => item.entityId === selectedDistrictId) ??
     null;
+  const demoApiBaseUrl = resolveDemoApiBaseUrl();
+
+  async function triggerDemoAction(
+    kind: 'school' | 'chat' | 'loan',
+    path: string,
+    body: Record<string, unknown>,
+  ) {
+    if (!demoApiBaseUrl) {
+      setDemoMessage('Backend demo triggers are available only in local demo mode.');
+      return;
+    }
+
+    try {
+      setDemoBusy(kind);
+      setDemoMessage(null);
+      const response = await fetch(`${demoApiBaseUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Demo action failed with HTTP ${response.status}.`);
+      }
+
+      setDemoMessage(
+        kind === 'school'
+          ? 'School payment reminder sent to the demo member.'
+          : kind === 'chat'
+            ? 'Demo support chat created for the mobile flow.'
+            : 'Demo loan moved to head office review.',
+      );
+    } catch (error) {
+      setDemoMessage(error instanceof Error ? error.message : 'Demo action failed.');
+    } finally {
+      setDemoBusy(null);
+    }
+  }
 
   return (
     <DashboardPage>
+      <div className="head-office-page">
+      <section className="head-office-mission-grid">
+        <article className="head-office-mission-card head-office-mission-card-primary">
+          <div className="head-office-mission-copy">
+            <p className="eyebrow">Executive Command</p>
+            <h3>Head office banking control center for lending, support, KYC, and school collections.</h3>
+            <p>
+              Surface the bank&apos;s biggest issues first, then move into district execution,
+              queue pressure, and demo triggers without scanning through long stacked sections.
+            </p>
+          </div>
+          <div className="head-office-mission-stats">
+            <div>
+              <span>Customers</span>
+              <strong>{commandCenter ? commandCenter.totalCustomers.toLocaleString() : 'Not available'}</strong>
+            </div>
+            <div>
+              <span>Savings</span>
+              <strong>{commandCenter ? `ETB ${commandCenter.totalSavings.toLocaleString()}` : 'Not available'}</strong>
+            </div>
+            <div>
+              <span>Pending Approvals</span>
+              <strong>{commandCenter ? commandCenter.pendingApprovals.toLocaleString() : 'Not available'}</strong>
+            </div>
+            <div>
+              <span>Open Chats</span>
+              <strong>{unansweredChatsCount.toLocaleString()}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article className="head-office-mission-card head-office-mission-card-risk">
+          <p className="eyebrow">Priority Signals</p>
+          <h3>What requires executive attention now</h3>
+          <div className="support-overview-stack">
+            <DashboardMetricRow
+              label="Overdue Loans"
+              value={overdueLoansCount.toLocaleString()}
+              note="Recovery posture and branch follow-up"
+            />
+            <DashboardMetricRow
+              label="Missing Documents"
+              value={missingDocumentsCount.toLocaleString()}
+              note="Loan evidence and KYC gaps"
+            />
+            <DashboardMetricRow
+              label="Insurance Risk"
+              value={expiringInsuranceCount.toLocaleString()}
+              note="Policies nearing expiry"
+            />
+          </div>
+        </article>
+
+        <article className="head-office-mission-card head-office-mission-card-actions">
+          <p className="eyebrow">Demo Snapshot</p>
+          <h3>Fast-read flow summary</h3>
+          <div className="support-overview-stack">
+            <DashboardMetricRow
+              label="School Payments"
+              value={schoolOverview?.summary.students.toLocaleString() ?? '0'}
+              note={`${overdueSchoolInvoicesCount.toLocaleString()} overdue students`}
+            />
+            <DashboardMetricRow
+              label="Loan Pipeline"
+              value={loanPipeline[0]?.value.toLocaleString() ?? '0'}
+              note="Submitted files in motion"
+            />
+            <DashboardMetricRow
+              label="KYC Queue"
+              value={kycQueueCount.toLocaleString()}
+              note="Pending onboarding review"
+            />
+          </div>
+        </article>
+      </section>
+
       <ConsoleKpiStrip
         items={[
           {
@@ -248,6 +369,44 @@ export function HeadOfficeManagerDashboardPage({
         ]}
       />
 
+      {demoApiBaseUrl ? (
+        <DashboardSectionCard
+          title="Demo Triggers"
+          description="Local controls for the executive demo flow."
+          action={<QuickActionChip label="Local only" />}
+        >
+          <div className="flex flex-wrap gap-3">
+            <QuickActionChip
+              label={demoBusy === 'school' ? 'Triggering school alert...' : 'Trigger school alert'}
+              onClick={() =>
+                void triggerDemoAction('school', '/demo/notifications/school-payment', {
+                  profileId: 'school_profile_001',
+                })
+              }
+            />
+            <QuickActionChip
+              label={demoBusy === 'chat' ? 'Creating demo chat...' : 'Create demo chat'}
+              onClick={() =>
+                void triggerDemoAction('chat', '/demo/chat/create', {
+                  initialMessage:
+                    'Hello, I need help with the school payment and loan status demo.',
+                })
+              }
+            />
+            <QuickActionChip
+              label={demoBusy === 'loan' ? 'Updating loan...' : 'Move loan to head office'}
+              onClick={() =>
+                void triggerDemoAction('loan', '/demo/loan/update', {
+                  status: 'head_office_review',
+                  comment: 'Loan moved to head office review for the executive demo.',
+                })
+              }
+            />
+          </div>
+          {demoMessage ? <p className="muted">{demoMessage}</p> : null}
+        </DashboardSectionCard>
+      ) : null}
+
       <DashboardGrid>
         <DashboardSectionCard
           title="District Performance"
@@ -264,6 +423,18 @@ export function HeadOfficeManagerDashboardPage({
                 tone={item.status === 'needs_support' ? 'red' : item.status === 'watch' ? 'amber' : 'blue'}
               />
             ))}
+            <DashboardMiniBars
+              items={filteredItems.slice(0, 4).map((item) => ({
+                label: item.name.replace(/\s+District$/i, ''),
+                value: item.score,
+                tone:
+                  item.status === 'needs_support'
+                    ? 'red'
+                    : item.status === 'watch'
+                      ? 'amber'
+                      : 'blue',
+              }))}
+            />
           </div>
         </DashboardSectionCard>
 
@@ -292,6 +463,18 @@ export function HeadOfficeManagerDashboardPage({
                 tone={chat.escalationFlag ? 'red' : chat.priority === 'high' ? 'amber' : 'blue'}
               />
             ))}
+            <DashboardMiniBars
+              items={[
+                { label: 'Open', value: commandCenter?.supportOverview.openChats ?? 0, tone: 'red' },
+                { label: 'Assigned', value: openChats.length, tone: 'blue' },
+                {
+                  label: 'Escalated',
+                  value: commandCenter?.supportOverview.escalatedChats ?? 0,
+                  tone: 'amber',
+                },
+                { label: 'Resolved', value: Math.max(openChats.length - unansweredChatsCount, 0), tone: 'green' },
+              ]}
+            />
           </div>
         </DashboardSectionCard>
       </DashboardGrid>
@@ -385,6 +568,18 @@ export function HeadOfficeManagerDashboardPage({
               />
             ))}
           </div>
+          <DashboardMiniBars
+            items={branchPerformance.slice(0, 5).map((item) => ({
+              label: item.scopeId.split('-')[0] ?? item.scopeId,
+              value: Math.min(
+                Math.round(
+                  ((item.loanApprovedCount + item.schoolPaymentsCount + item.customersServed / 10) / 120) * 100,
+                ),
+                99,
+              ),
+              tone: 'blue',
+            }))}
+          />
         </DashboardSectionCard>
       </DashboardGrid>
 
@@ -823,6 +1018,7 @@ export function HeadOfficeManagerDashboardPage({
           {openChats.length === 0 ? <div className="live-chat-empty">No live chats waiting.</div> : null}
         </div>
       </aside>
+      </div>
     </DashboardPage>
   );
 }
@@ -851,6 +1047,21 @@ function compareDistricts(
     default:
       return right.score - left.score;
   }
+}
+
+function resolveDemoApiBaseUrl() {
+  const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (explicitBaseUrl) {
+    return explicitBaseUrl;
+  }
+
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return ['127.0.0.1', 'localhost'].includes(window.location.hostname)
+    ? 'http://127.0.0.1:4000'
+    : '';
 }
 
 function MetricBar({

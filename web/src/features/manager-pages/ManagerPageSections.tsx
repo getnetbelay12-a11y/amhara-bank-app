@@ -10,10 +10,22 @@ import type {
   NotificationCenterItem,
   OnboardingReviewItem,
   PerformanceSummaryItem,
+  RolePerformanceItem,
+  RolePerformanceOverview,
   StaffRankingItem,
   SupportChatSummaryItem,
 } from '../../core/api/contracts';
-import type { AdminSession } from '../../core/session';
+import { getManagerConsoleKind, type AdminSession } from '../../core/session';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardMiniBars,
+  DashboardPage,
+  DashboardProgressRow,
+  DashboardSectionCard,
+  DashboardTableCard,
+  EmptyStateCard,
+} from '../../shared/components/BankingDashboard';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
 
@@ -208,28 +220,140 @@ export function KycVerificationPage({
 }
 
 export function ReportsHubPage({ session }: SessionProps) {
+  const { dashboardApi } = useAppClient();
+  const [summary, setSummary] = useState<PerformanceSummaryItem[]>([]);
+  const [staff, setStaff] = useState<StaffRankingItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const kind = getManagerConsoleKind(session.role);
+    const summaryPromise =
+      kind === 'district'
+        ? dashboardApi.getBranchPerformance(session.role)
+        : kind === 'head_office'
+          ? dashboardApi.getDistrictPerformance(session.role)
+          : dashboardApi.getBranchPerformance(session.role);
+
+    void Promise.all([summaryPromise, dashboardApi.getStaffRanking(session.role)]).then(
+      ([summaryResult, staffResult]) => {
+        if (cancelled) {
+          return;
+        }
+
+        setSummary(summaryResult);
+        setStaff(staffResult);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardApi, session.role]);
+
+  const totalMembers = summary.reduce((sum, item) => sum + item.customersServed, 0);
+  const totalTransactions = summary.reduce((sum, item) => sum + item.transactionsCount, 0);
+  const totalVolume = summary.reduce((sum, item) => sum + item.totalTransactionAmount, 0);
+  const totalSchoolPayments = summary.reduce((sum, item) => sum + item.schoolPaymentsCount, 0);
+  const reportBars = summary.slice(0, 6).map((item) => ({
+    label: titleCase(item.scopeId),
+    value: item.transactionsCount,
+    tone: 'blue' as const,
+  }));
+  const scopeLabel =
+    getManagerConsoleKind(session.role) === 'head_office'
+      ? 'District'
+      : getManagerConsoleKind(session.role) === 'district'
+        ? 'Branch'
+        : 'Branch';
+
   return (
-    <div className="page-stack">
-      <Panel
-        title="Reports"
-        description={`Scheduled and export-ready reporting for ${session.branchName}.`}
-      >
-        <SimpleTable
-          headers={['Report', 'Scope', 'Refresh']}
+    <DashboardPage>
+      <div className="reports-page">
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Reporting Snapshot"
+            description={`Scheduled and export-ready reporting for ${session.branchName}.`}
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow label="Members served" value={totalMembers.toLocaleString()} />
+              <DashboardMetricRow label="Transactions" value={totalTransactions.toLocaleString()} />
+              <DashboardMetricRow label="Volume" value={`ETB ${totalVolume.toLocaleString()}`} />
+              <DashboardMetricRow label="School payments" value={totalSchoolPayments.toLocaleString()} />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Activity Trend"
+            description="Visible scope activity by branch or district."
+          >
+            {reportBars.length > 0 ? (
+              <DashboardMiniBars items={reportBars} />
+            ) : (
+              <EmptyStateCard
+                title="No activity data yet"
+                description="Reporting trends will appear once operational performance data is available in this scope."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardTableCard
+          title="Scheduled Reports"
+          description="Current export and reporting cadence."
+          headers={['Report', 'Scope', 'Refresh', 'Status']}
           rows={[
-            ['Executive summary', session.branchName, 'Hourly'],
-            ['Loan approvals and escalations', session.branchName, 'Every 15 min'],
-            ['Member growth and service load', session.branchName, 'Daily'],
+            ['Executive summary', session.branchName, 'Hourly', 'Ready'],
+            ['Loan approvals and escalations', session.branchName, 'Every 15 min', 'Live'],
+            ['Member growth and service load', session.branchName, 'Daily', 'Ready'],
+            ['School payment activity', session.branchName, 'Daily', 'Ready'],
           ]}
         />
-      </Panel>
-    </div>
+
+        <DashboardGrid>
+          <DashboardTableCard
+            title={`${scopeLabel} Activity`}
+            description="Operational totals in the current reporting scope."
+            headers={[scopeLabel, 'Members', 'Transactions', 'School Payments', 'Volume']}
+            rows={
+              summary.length > 0
+                ? summary.map((item) => [
+                    titleCase(item.scopeId),
+                    item.customersServed.toLocaleString(),
+                    item.transactionsCount.toLocaleString(),
+                    item.schoolPaymentsCount.toLocaleString(),
+                    `ETB ${item.totalTransactionAmount.toLocaleString()}`,
+                  ])
+                : [['No reporting activity yet', '-', '-', '-', '-']]
+            }
+          />
+
+          <DashboardTableCard
+            title="Staff Output"
+            description="Top available staff reporting signals in this scope."
+            headers={['Staff', 'Customers', 'Transactions', 'Loans', 'Score']}
+            rows={
+              staff.length > 0
+                ? staff.slice(0, 6).map((item) => [
+                    titleCase(item.staffId),
+                    item.customersServed.toLocaleString(),
+                    item.transactionsCount.toLocaleString(),
+                    item.loanApprovedCount.toLocaleString(),
+                    item.score.toLocaleString(),
+                  ])
+                : [['No staff reporting data', '-', '-', '-', '-']]
+            }
+          />
+        </DashboardGrid>
+      </div>
+    </DashboardPage>
   );
 }
 
 export function BranchOverviewPage({ session }: SessionProps) {
   const { dashboardApi } = useAppClient();
   const [branches, setBranches] = useState<PerformanceSummaryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +361,7 @@ export function BranchOverviewPage({ session }: SessionProps) {
     void dashboardApi.getBranchPerformance(session.role).then((result) => {
       if (!cancelled) {
         setBranches(result);
+        setLoading(false);
       }
     });
 
@@ -245,28 +370,146 @@ export function BranchOverviewPage({ session }: SessionProps) {
     };
   }, [dashboardApi, session.role]);
 
+  const rankedBranches = [...branches]
+    .map((item) => ({
+      item,
+      score: calculatePerformanceScore(item),
+    }))
+    .sort((left, right) => right.score - left.score);
+  const topBranch = rankedBranches[0] ?? null;
+  const totalMembers = branches.reduce((sum, item) => sum + item.customersServed, 0);
+  const totalTransactions = branches.reduce((sum, item) => sum + item.transactionsCount, 0);
+  const totalVolume = branches.reduce((sum, item) => sum + item.totalTransactionAmount, 0);
+
   return (
-    <div className="page-stack">
-      <Panel
-        title="Branch Performance"
-        description="Branch comparison for district leadership."
-      >
-        <SimpleTable
-          headers={['Branch', 'Members', 'Transactions', 'Volume']}
+    <DashboardPage>
+      <div className="district-branch-page">
+        <section className="district-branch-summary">
+          <DashboardSectionCard
+            title="District Branch Snapshot"
+            description="Branch comparison for district leadership."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Branches in scope"
+                value={branches.length.toLocaleString()}
+                note={loading ? 'Loading district branch view' : 'Active district branch comparison'}
+              />
+              <DashboardMetricRow
+                label="Top branch"
+                value={topBranch ? `${topBranch.score} score` : 'Not available'}
+                note={topBranch ? titleCase(topBranch.item.scopeId) : 'No ranked branch data yet'}
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="District Totals"
+            description="Rolled-up branch activity in the current scope."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Members served"
+                value={totalMembers.toLocaleString()}
+              />
+              <DashboardMetricRow
+                label="Transactions"
+                value={totalTransactions.toLocaleString()}
+              />
+              <DashboardMetricRow
+                label="Volume"
+                value={`ETB ${totalVolume.toLocaleString()}`}
+              />
+            </div>
+          </DashboardSectionCard>
+        </section>
+
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Scoreboard"
+            description="Branch execution scores across the district."
+          >
+            {rankedBranches.length > 0 ? (
+              <div className="dashboard-stack">
+                {rankedBranches.slice(0, 6).map((item) => (
+                  <DashboardProgressRow
+                    key={item.item.scopeId}
+                    label={titleCase(item.item.scopeId)}
+                    value={`${item.score} score`}
+                    progress={Math.min(item.score, 100)}
+                    tone={item.score >= 85 ? 'green' : item.score >= 70 ? 'blue' : 'amber'}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyStateCard
+                title={loading ? 'Loading branch performance' : 'No branch performance data'}
+                description={
+                  loading
+                    ? 'District branch metrics are loading now.'
+                    : 'There is no branch performance data in the current district scope yet.'
+                }
+              />
+            )}
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Branch Watchlist"
+            description="Lower-scoring branches that need district coaching."
+          >
+            {rankedBranches.length > 0 ? (
+              <div className="dashboard-stack">
+                {rankedBranches
+                  .slice()
+                  .sort((left, right) => left.score - right.score)
+                  .slice(0, 4)
+                  .map((item) => (
+                    <DashboardProgressRow
+                      key={item.item.scopeId}
+                      label={titleCase(item.item.scopeId)}
+                      value={`${item.item.schoolPaymentsCount.toLocaleString()} school payments`}
+                      progress={Math.min(item.score, 100)}
+                      tone={item.score < 70 ? 'red' : 'amber'}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <EmptyStateCard
+                title="No branch watchlist"
+                description="District branch watchlist items will appear here when branch metrics are available."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardTableCard
+          title="Branch Performance"
+          description="District branch performance in a simplified score table."
+          headers={['Branch', 'Members', 'Transactions', 'Volume', 'Score']}
           rows={
-            branches.length > 0
-              ? branches.map((item) => [
-                  titleCase(item.scopeId),
-                  item.customersServed.toLocaleString(),
-                  item.transactionsCount.toLocaleString(),
-                  `ETB ${item.totalTransactionAmount.toLocaleString()}`,
+            rankedBranches.length > 0
+              ? rankedBranches.map((item) => [
+                  titleCase(item.item.scopeId),
+                  item.item.customersServed.toLocaleString(),
+                  item.item.transactionsCount.toLocaleString(),
+                  `ETB ${item.item.totalTransactionAmount.toLocaleString()}`,
+                  `${item.score}`,
                 ])
-              : [['Loading', '...', '...', '...']]
+              : [[loading ? 'Loading branch data' : 'No branches found', '-', '-', '-', '-']]
           }
         />
-      </Panel>
-    </div>
+      </div>
+    </DashboardPage>
   );
+}
+
+function calculatePerformanceScore(item: PerformanceSummaryItem) {
+  const memberBand = Math.min(Math.round(item.customersServed / 12), 25);
+  const transactionBand = Math.min(Math.round(item.transactionsCount / 28), 25);
+  const approvalBand = Math.min(item.loanApprovedCount * 6, 30);
+  const paymentBand = Math.min(item.schoolPaymentsCount * 4, 20);
+
+  return Math.min(memberBand + transactionBand + approvalBand + paymentBand, 100);
 }
 
 export function KycAuditPage({ session }: SessionProps) {
@@ -616,13 +859,24 @@ export function NotificationsPage({ session }: SessionProps) {
 export function StaffSnapshotPage({ session }: SessionProps) {
   const { dashboardApi } = useAppClient();
   const [staff, setStaff] = useState<StaffRankingItem[]>([]);
+  const [overview, setOverview] = useState<RolePerformanceOverview | null>(null);
+  const [topEmployees, setTopEmployees] = useState<RolePerformanceItem[]>([]);
+  const [watchlist, setWatchlist] = useState<RolePerformanceItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
-    void dashboardApi.getStaffRanking(session.role).then((result) => {
+    void Promise.all([
+      dashboardApi.getStaffRanking(session.role),
+      dashboardApi.getBranchEmployeeSummary(session.role),
+      dashboardApi.getBranchTopEmployees(session.role),
+      dashboardApi.getBranchEmployeeWatchlist(session.role),
+    ]).then(([staffResult, overviewResult, topResult, watchlistResult]) => {
       if (!cancelled) {
-        setStaff(result);
+        setStaff(staffResult);
+        setOverview(overviewResult);
+        setTopEmployees(topResult);
+        setWatchlist(watchlistResult);
       }
     });
 
@@ -631,27 +885,126 @@ export function StaffSnapshotPage({ session }: SessionProps) {
     };
   }, [dashboardApi, session.role]);
 
+  const topPerformer = topEmployees[0] ?? null;
+  const totalCustomers = staff.reduce((sum, item) => sum + item.customersServed, 0);
+  const totalTransactions = staff.reduce((sum, item) => sum + item.transactionsCount, 0);
+
   return (
-    <div className="page-stack">
-      <Panel
-        title="Staff Performance"
-        description="Performance ranking for the currently visible management scope."
-      >
-        <SimpleTable
-          headers={['Staff', 'Customers', 'Transactions', 'Score']}
+    <DashboardPage>
+      <div className="staff-performance-page">
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Staff Snapshot"
+            description="Performance ranking for the currently visible management scope."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow label="Tracked staff" value={staff.length.toLocaleString()} />
+              <DashboardMetricRow label="Customers" value={totalCustomers.toLocaleString()} />
+              <DashboardMetricRow label="Transactions" value={totalTransactions.toLocaleString()} />
+              <DashboardMetricRow
+                label="Top performer"
+                value={topPerformer ? `${topPerformer.score} score` : 'Not available'}
+                note={topPerformer?.name ?? 'No employee ranking yet'}
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Employee Scoreboard"
+            description="Top staff score posture in the visible branch scope."
+          >
+            {topEmployees.length > 0 ? (
+              <div className="dashboard-stack">
+                {topEmployees.slice(0, 5).map((item) => (
+                  <DashboardProgressRow
+                    key={item.entityId}
+                    label={item.name}
+                    value={`${item.score} score`}
+                    progress={Math.min(item.score, 100)}
+                    tone={item.score >= 85 ? 'green' : item.score >= 70 ? 'blue' : 'amber'}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyStateCard
+                title="No staff score data"
+                description="Employee score posture will appear here when branch employee performance data is available."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Branch Workload"
+            description="Operational branch employee totals for the selected scope."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow
+                label="Loans handled"
+                value={overview?.kpis.loansHandled.toLocaleString() ?? '0'}
+              />
+              <DashboardMetricRow
+                label="Pending tasks"
+                value={overview?.kpis.pendingTasks.toLocaleString() ?? '0'}
+              />
+              <DashboardMetricRow
+                label="Support resolved"
+                value={overview?.kpis.supportResolved.toLocaleString() ?? '0'}
+              />
+              <DashboardMetricRow
+                label="Avg handling"
+                value={overview ? `${overview.kpis.avgHandlingTime} min` : 'Not available'}
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Employee Watchlist"
+            description="Staff members needing manager attention."
+          >
+            {watchlist.length > 0 ? (
+              <div className="dashboard-stack">
+                {watchlist.slice(0, 4).map((item) => (
+                  <DashboardProgressRow
+                    key={item.entityId}
+                    label={item.name}
+                    value={`${item.pendingTasks} pending`}
+                    progress={Math.min(
+                      Math.round((item.pendingTasks / Math.max(item.pendingTasks + item.loansEscalated, 1)) * 100),
+                      100,
+                    )}
+                    tone={item.status === 'needs_support' ? 'red' : 'amber'}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyStateCard
+                title="No active employee alerts"
+                description="Branch staffing pressure is currently under control."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardTableCard
+          title="Staff Performance"
+          description="Compact branch staff ranking."
+          headers={['Staff', 'Customers', 'Transactions', 'Loans', 'Score']}
           rows={
             staff.length > 0
               ? staff.map((item) => [
                   titleCase(item.staffId),
                   item.customersServed.toLocaleString(),
                   item.transactionsCount.toLocaleString(),
+                  item.loanApprovedCount.toLocaleString(),
                   item.score.toLocaleString(),
                 ])
-              : [['Loading', '...', '...', '...']]
+              : [['No staff performance data', '-', '-', '-', '-']]
           }
         />
-      </Panel>
-    </div>
+      </div>
+    </DashboardPage>
   );
 }
 
