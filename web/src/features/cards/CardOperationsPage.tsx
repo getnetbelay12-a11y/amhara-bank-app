@@ -9,6 +9,14 @@ import type {
   CardRequestType,
   CardStatus,
 } from '../../core/api/contracts';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardSectionCard,
+  DashboardTableCard,
+  EmptyStateCard,
+} from '../../shared/components/BankingDashboard';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
 
@@ -135,7 +143,7 @@ export function CardOperationsPage({ session }: CardOperationsPageProps) {
   }
 
   return (
-    <div className="page-stack">
+    <DashboardPage>
       {!cardOperationsApi ? (
         <Panel
           title="Card Operations"
@@ -143,49 +151,60 @@ export function CardOperationsPage({ session }: CardOperationsPageProps) {
         />
       ) : null}
 
-      <Panel
-        title="Card Operations"
-        description="Review ATM issuance and replacement requests, then move them through the staff workflow."
-      >
-        <div className="dashboard-summary-strip">
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">All requests</span>
-            <strong>{summary.total.toLocaleString()}</strong>
+      <DashboardGrid>
+        <DashboardSectionCard
+          title="Card Operations Snapshot"
+          description="Review ATM issuance and replacement requests, then move them through the staff workflow."
+        >
+          <div className="dashboard-stack">
+            <DashboardMetricRow label="All requests" value={summary.total.toLocaleString()} />
+            <DashboardMetricRow label="Submitted" value={summary.submitted.toLocaleString()} />
+            <DashboardMetricRow label="In flight" value={summary.inFlight.toLocaleString()} />
+            <DashboardMetricRow label="Completed" value={summary.completed.toLocaleString()} />
           </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Submitted</span>
-            <strong>{summary.submitted.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">In flight</span>
-            <strong>{summary.inFlight.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Completed</span>
-            <strong>{summary.completed.toLocaleString()}</strong>
-          </div>
-        </div>
+        </DashboardSectionCard>
 
-        <div className="loan-filter-row">
-          {[
-            { id: 'all', label: `All (${summary.total})` },
-            { id: 'submitted', label: `Submitted (${summary.submitted})` },
-            { id: 'under_review', label: 'Under Review' },
-            { id: 'approved', label: 'Approved' },
-            { id: 'completed', label: `Completed (${summary.completed})` },
-          ].map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              className={activeFilter === filter.id ? 'loan-filter-chip active' : 'loan-filter-chip'}
-              onClick={() => setActiveFilter(filter.id as 'all' | CardRequestStatus)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <DashboardSectionCard
+          title="Card Queue Focus"
+          description="Use queue filters to separate submitted, approved, and completed requests."
+        >
+          <div className="loan-filter-row">
+            {[
+              { id: 'all', label: `All (${summary.total})` },
+              { id: 'submitted', label: `Submitted (${summary.submitted})` },
+              { id: 'under_review', label: 'Under Review' },
+              { id: 'approved', label: 'Approved' },
+              { id: 'completed', label: `Completed (${summary.completed})` },
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={activeFilter === filter.id ? 'loan-filter-chip active' : 'loan-filter-chip'}
+                onClick={() => setActiveFilter(filter.id as 'all' | CardRequestStatus)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          <div className="dashboard-stack">
+            <DashboardMetricRow
+              label="Visible requests"
+              value={filteredItems.length.toLocaleString()}
+              note="Current card-request filter"
+            />
+            <DashboardMetricRow
+              label="Selected request"
+              value={selected ? formatRequestType(selected.requestType) : 'Not selected'}
+              note={selected ? (selected.preferredBranch ?? session.branchName ?? 'n/a') : 'Pick a request from the queue'}
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
 
-        <SimpleTable
+      {filteredItems.length > 0 ? (
+        <DashboardTableCard
+          title="Card Requests"
+          description="Current issuance and replacement requests in this scope."
           headers={['Branch', 'Type', 'Status', 'Updated', 'Open']}
           rows={filteredItems.map((item) => [
             item.preferredBranch ?? session.branchName ?? 'n/a',
@@ -201,12 +220,18 @@ export function CardOperationsPage({ session }: CardOperationsPageProps) {
               Review request
             </button>,
           ])}
-          emptyState={{
-            title: 'No card requests in this filter',
-            description: 'No card issuance or replacement requests match the current queue filter.',
-          }}
         />
-      </Panel>
+      ) : (
+        <DashboardSectionCard
+          title="Card Requests"
+          description="Current issuance and replacement requests in this scope."
+        >
+          <EmptyStateCard
+            title="No card requests in this filter"
+            description="No card issuance or replacement requests match the current queue filter."
+          />
+        </DashboardSectionCard>
+      )}
 
       {cardOperationsApi && selected ? (
         <Panel
@@ -291,7 +316,7 @@ export function CardOperationsPage({ session }: CardOperationsPageProps) {
           />
         </Panel>
       ) : null}
-    </div>
+    </DashboardPage>
   );
 }
 
