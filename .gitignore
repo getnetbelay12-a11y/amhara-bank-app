@@ -1,6 +1,7 @@
 .DS_Store
 
 # Local secrets and overrides
+.local/
 **/.env
 **/.env.local
 !**/.env.example
@@ -18,4 +19,3 @@ build/
 
 # CocoaPods and generated native artifacts
 Pods/
-
