@@ -1,0 +1,21 @@
+.DS_Store
+
+# Local secrets and overrides
+**/.env
+**/.env.local
+!**/.env.example
+!**/.env.development.example
+
+# JS/TS build artifacts
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Flutter/Dart artifacts
+.dart_tool/
+build/
+
+# CocoaPods and generated native artifacts
+Pods/
+
