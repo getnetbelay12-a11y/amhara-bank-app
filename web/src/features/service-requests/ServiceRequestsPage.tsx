@@ -9,6 +9,13 @@ import type {
   ServiceRequestStatus,
   ServiceRequestType,
 } from '../../core/api/contracts';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardSectionCard,
+  DashboardTableCard,
+} from '../../shared/components/BankingDashboard';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
 
@@ -172,77 +179,86 @@ export function ServiceRequestsPage({ session }: ServiceRequestsPageProps) {
   }
 
   return (
-    <div className="page-stack">
+    <DashboardPage>
       {!serviceRequestApi ? (
         <Panel
           title="Service Requests"
           description="Service request workflows are unavailable in this preview client."
         />
       ) : null}
-      <Panel
+      <DashboardGrid>
+        <DashboardSectionCard
+          title="Service Request Snapshot"
+          description="Track customer-submitted disputes and service workflows for phone updates, card requests, failed transfers, and account relationship changes."
+        >
+          <div className="dashboard-stack">
+            <DashboardMetricRow label="All requests" value={summary.total.toLocaleString()} />
+            <DashboardMetricRow label="New" value={summary.submitted.toLocaleString()} />
+            <DashboardMetricRow label="In flight" value={summary.inFlight.toLocaleString()} />
+            <DashboardMetricRow label="Completed" value={summary.completed.toLocaleString()} />
+          </div>
+        </DashboardSectionCard>
+
+        <DashboardSectionCard
+          title="Queue Focus"
+          description="Use queue filters to move from intake to completion faster."
+        >
+          <div className="loan-filter-row">
+            {[
+              { id: 'all', label: `All (${summary.total})` },
+              { id: 'submitted', label: `Submitted (${summary.submitted})` },
+              { id: 'under_review', label: 'Under Review' },
+              { id: 'awaiting_customer', label: 'Awaiting Customer' },
+              { id: 'completed', label: `Completed (${summary.completed})` },
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={activeFilter === filter.id ? 'loan-filter-chip active' : 'loan-filter-chip'}
+                onClick={() => setActiveFilter(filter.id as 'all' | ServiceRequestStatus)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          <div className="dashboard-stack">
+            <DashboardMetricRow
+              label="Visible queue"
+              value={filteredItems.length.toLocaleString()}
+              note="Requests matching the current filter"
+            />
+            <DashboardMetricRow
+              label="Selected request"
+              value={selected ? formatTypeLabel(selected.type) : 'Not selected'}
+              note={selected ? `${selected.memberName} (${selected.customerId})` : 'Pick a request from the queue'}
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
+
+      <DashboardTableCard
         title="Service Requests"
-        description="Track customer-submitted disputes and service workflows for phone updates, card requests, failed transfers, and account relationship changes."
-      >
-        <div className="dashboard-summary-strip">
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">All requests</span>
-            <strong>{summary.total.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">New</span>
-            <strong>{summary.submitted.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">In flight</span>
-            <strong>{summary.inFlight.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Completed</span>
-            <strong>{summary.completed.toLocaleString()}</strong>
-          </div>
-        </div>
-
-        <div className="loan-filter-row">
-          {[
-            { id: 'all', label: `All (${summary.total})` },
-            { id: 'submitted', label: `Submitted (${summary.submitted})` },
-            { id: 'under_review', label: 'Under Review' },
-            { id: 'awaiting_customer', label: 'Awaiting Customer' },
-            { id: 'completed', label: `Completed (${summary.completed})` },
-          ].map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              className={activeFilter === filter.id ? 'loan-filter-chip active' : 'loan-filter-chip'}
-              onClick={() => setActiveFilter(filter.id as 'all' | ServiceRequestStatus)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-
-        <SimpleTable
-          headers={['Customer', 'Type', 'Status', 'Updated', 'Open']}
-          rows={filteredItems.map((item) => [
-            `${item.memberName} (${item.customerId})`,
-            formatTypeLabel(item.type),
-            formatLabel(item.status),
-            item.updatedAt ?? item.createdAt ?? 'n/a',
-            <button
-              key={item.id}
-              type="button"
-              className="loan-watchlist-link"
-              onClick={() => setSelectedId(item.id)}
-            >
-              Review request
-            </button>,
-          ])}
-          emptyState={{
-            title: 'No service requests in this filter',
-            description: 'No customer-submitted service workflows match the current queue filter.',
-          }}
-        />
-      </Panel>
+        description="Current customer-submitted service workflows in this scope."
+        headers={['Customer', 'Type', 'Status', 'Updated', 'Open']}
+        rows={
+          filteredItems.length > 0
+            ? filteredItems.map((item) => [
+                `${item.memberName} (${item.customerId})`,
+                formatTypeLabel(item.type),
+                formatLabel(item.status),
+                item.updatedAt ?? item.createdAt ?? 'n/a',
+                <button
+                  key={item.id}
+                  type="button"
+                  className="loan-watchlist-link"
+                  onClick={() => setSelectedId(item.id)}
+                >
+                  Review request
+                </button>,
+              ])
+            : [['No service requests in this filter', '-', '-', '-', '-']]
+        }
+      />
 
       {serviceRequestApi && selected ? (
         <Panel
@@ -353,7 +369,7 @@ export function ServiceRequestsPage({ session }: ServiceRequestsPageProps) {
           />
         </Panel>
       ) : null}
-    </div>
+    </DashboardPage>
   );
 }
 

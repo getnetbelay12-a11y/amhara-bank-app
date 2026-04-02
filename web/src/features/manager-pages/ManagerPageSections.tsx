@@ -51,14 +51,57 @@ export function MembersPage({ session }: SessionProps) {
     };
   }, [dashboardApi, session.role]);
 
+  const totalMembers = branches.reduce((sum, item) => sum + item.customersServed, 0);
+  const totalTransactions = branches.reduce((sum, item) => sum + item.transactionsCount, 0);
+  const totalSchoolPayments = branches.reduce((sum, item) => sum + item.schoolPaymentsCount, 0);
+  const topScope =
+    [...branches].sort((left, right) => right.customersServed - left.customersServed)[0] ?? null;
+
   return (
-    <div className="page-stack">
-      <Panel
-        title="Members"
-        description="Membership growth, branch coverage, and service readiness within the current role scope."
-      >
-        <SimpleTable
-          headers={['Scope', 'Members', 'Transactions', 'School Payments']}
+    <DashboardPage>
+      <div className="members-page">
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Membership Snapshot"
+            description="Membership growth, branch coverage, and service readiness within the current role scope."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow label="Members served" value={totalMembers.toLocaleString()} />
+              <DashboardMetricRow label="Transactions" value={totalTransactions.toLocaleString()} />
+              <DashboardMetricRow label="School payments" value={totalSchoolPayments.toLocaleString()} />
+              <DashboardMetricRow
+                label="Top scope"
+                value={topScope ? topScope.customersServed.toLocaleString() : 'Not available'}
+                note={topScope ? titleCase(topScope.scopeId) : 'No scope data yet'}
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Scope Activity"
+            description="Customer footprint across the visible coverage area."
+          >
+            {branches.length > 0 ? (
+              <DashboardMiniBars
+                items={branches.slice(0, 6).map((item) => ({
+                  label: titleCase(item.scopeId),
+                  value: item.customersServed,
+                  tone: 'blue' as const,
+                }))}
+              />
+            ) : (
+              <EmptyStateCard
+                title="No membership activity yet"
+                description="Coverage and member activity will appear here when scope data is available."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardTableCard
+          title="Membership Coverage"
+          description="Customer service totals across the current management scope."
+          headers={['Scope', 'Members', 'Transactions', 'School Payments', 'Volume']}
           rows={
             branches.length > 0
               ? branches.map((item) => [
@@ -66,12 +109,13 @@ export function MembersPage({ session }: SessionProps) {
                   item.customersServed.toLocaleString(),
                   item.transactionsCount.toLocaleString(),
                   item.schoolPaymentsCount.toLocaleString(),
+                  `ETB ${item.totalTransactionAmount.toLocaleString()}`,
                 ])
-              : [['Loading', '...', '...', '...']]
+              : [['No membership data yet', '-', '-', '-', '-']]
           }
         />
-      </Panel>
-    </div>
+      </div>
+    </DashboardPage>
   );
 }
 
@@ -137,7 +181,7 @@ export function KycVerificationPage({
   };
 
   return (
-    <div className="page-stack">
+    <DashboardPage>
       {returnContextLabel && onReturnToContext ? (
         <div className="loan-return-banner">
           <div>
@@ -153,24 +197,36 @@ export function KycVerificationPage({
           </button>
         </div>
       ) : null}
-      <Panel
-        title="KYC Verification"
-        description="Live onboarding review queue with secure status handling, exception follow-up, and approval readiness."
-      >
-        <p className="muted">
-          Review priority should follow secure onboarding rules: verify Fayda evidence first,
-          resolve missing information next, and only clear members for voting or payments after approval.
-        </p>
-        <SimpleTable
-          headers={['Submitted cases', 'In active review', 'Needs customer action']}
-          rows={[[counts.submitted.toString(), counts.reviewInProgress.toString(), counts.needsAction.toString()]]}
-        />
-      </Panel>
-      <Panel
-        title="Onboarding Review Queue"
-        description="Branch and district teams can move cases into review, request correction, or approve verified onboarding packages."
-      >
-        <SimpleTable
+      <div className="kyc-page">
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="KYC Verification"
+            description="Live onboarding review queue with secure status handling, exception follow-up, and approval readiness."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow label="Submitted" value={counts.submitted.toString()} />
+              <DashboardMetricRow label="In active review" value={counts.reviewInProgress.toString()} />
+              <DashboardMetricRow label="Needs customer action" value={counts.needsAction.toString()} />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="KYC Queue Trend"
+            description="Current posture across submitted, in-review, and correction cases."
+          >
+            <DashboardMiniBars
+              items={[
+                { label: 'Submitted', value: counts.submitted, tone: 'blue' },
+                { label: 'Review', value: counts.reviewInProgress, tone: 'amber' },
+                { label: 'Needs action', value: counts.needsAction, tone: 'red' },
+              ]}
+            />
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardTableCard
+          title="Onboarding Review Queue"
+          description="Branch and district teams can move cases into review, request correction, or approve verified onboarding packages."
           headers={[
             'Customer',
             'Branch',
@@ -179,43 +235,43 @@ export function KycVerificationPage({
             'Customer next step',
             'Review action',
           ]}
-          rows={prioritizedItems.map((item) => [
-            `${item.memberName} (${item.customerId})`,
-            item.branchName ?? 'Unassigned',
-            item.onboardingReviewStatus.replace(/_/g, ' '),
-            `${item.identityVerificationStatus} / ${item.kycStatus}`,
-            item.requiredAction,
-            <div key={item.memberId} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => void handleReviewAction(item.memberId, 'review_in_progress')}
-              >
-                Start review
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => void handleReviewAction(item.memberId, 'needs_action')}
-              >
-                Request update
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleReviewAction(item.memberId, 'approved')}
-              >
-                Approve
-              </button>
-            </div>,
-          ])}
-          emptyState={{
-            title: 'No onboarding reviews in this scope',
-            description: 'There are no onboarding cases waiting for review in the current staff scope.',
-          }}
+          rows={
+            prioritizedItems.length > 0
+              ? prioritizedItems.map((item) => [
+                  `${item.memberName} (${item.customerId})`,
+                  item.branchName ?? 'Unassigned',
+                  item.onboardingReviewStatus.replace(/_/g, ' '),
+                  `${item.identityVerificationStatus} / ${item.kycStatus}`,
+                  item.requiredAction,
+                  <div key={item.memberId} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => void handleReviewAction(item.memberId, 'review_in_progress')}
+                    >
+                      Start review
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => void handleReviewAction(item.memberId, 'needs_action')}
+                    >
+                      Request update
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => void handleReviewAction(item.memberId, 'approved')}
+                    >
+                      Approve
+                    </button>
+                  </div>,
+                ])
+              : [['No onboarding reviews', '-', '-', '-', '-', '-']]
+          }
         />
-      </Panel>
-    </div>
+      </div>
+    </DashboardPage>
   );
 }
 
@@ -832,13 +888,58 @@ export function NotificationsPage({ session }: SessionProps) {
     };
   }, [notificationApi, session.role]);
 
+  const sentCount = items.filter((item) => item.status === 'sent').length;
+  const failedCount = items.filter((item) => item.status === 'failed').length;
+  const unreadCount = items.filter((item) => item.status === 'unread').length;
+  const typeCounts = new Map<string, number>();
+  items.forEach((item) => {
+    typeCounts.set(item.type, (typeCounts.get(item.type) ?? 0) + 1);
+  });
+
   return (
-    <div className="page-stack">
-      <Panel
-        title="Notifications"
-        description="Operational broadcasts and event notifications in the current scope."
-      >
-        <SimpleTable
+    <DashboardPage>
+      <div className="notifications-page-workspace">
+        <DashboardGrid>
+          <DashboardSectionCard
+            title="Notification Snapshot"
+            description="Operational broadcasts and event notifications in the current scope."
+          >
+            <div className="dashboard-stack">
+              <DashboardMetricRow label="Sent" value={sentCount.toLocaleString()} />
+              <DashboardMetricRow label="Unread" value={unreadCount.toLocaleString()} />
+              <DashboardMetricRow label="Failed" value={failedCount.toLocaleString()} />
+              <DashboardMetricRow
+                label="Latest activity"
+                value={items[0] ? titleCase(items[0].type) : 'Not available'}
+                note={items[0]?.sentAt ?? 'No notifications yet'}
+              />
+            </div>
+          </DashboardSectionCard>
+
+          <DashboardSectionCard
+            title="Category Mix"
+            description="Visible notification categories in this scope."
+          >
+            {items.length > 0 ? (
+              <DashboardMiniBars
+                items={Array.from(typeCounts.entries()).slice(0, 6).map(([label, value]) => ({
+                  label: titleCase(label),
+                  value,
+                  tone: 'blue' as const,
+                }))}
+              />
+            ) : (
+              <EmptyStateCard
+                title="No notification activity"
+                description="Notification categories will appear here when operational messages are sent."
+              />
+            )}
+          </DashboardSectionCard>
+        </DashboardGrid>
+
+        <DashboardTableCard
+          title="Notifications"
+          description="Current operational broadcasts and event notifications."
           headers={['Type', 'User', 'Status', 'Sent At']}
           rows={
             items.length > 0
@@ -848,11 +949,11 @@ export function NotificationsPage({ session }: SessionProps) {
                   titleCase(item.status),
                   item.sentAt,
                 ])
-              : [['Loading', '...', '...', '...']]
+              : [['No notifications yet', '-', '-', '-']]
           }
         />
-      </Panel>
-    </div>
+      </div>
+    </DashboardPage>
   );
 }
 

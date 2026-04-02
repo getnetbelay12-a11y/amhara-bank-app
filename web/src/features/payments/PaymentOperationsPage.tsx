@@ -6,6 +6,13 @@ import type {
   PaymentActivityItem,
   PaymentReceiptItem,
 } from '../../core/api/contracts';
+import {
+  DashboardGrid,
+  DashboardMetricRow,
+  DashboardPage,
+  DashboardSectionCard,
+  DashboardTableCard,
+} from '../../shared/components/BankingDashboard';
 import { Panel } from '../../shared/components/Panel';
 import { SimpleTable } from '../../shared/components/SimpleTable';
 
@@ -124,7 +131,7 @@ export function PaymentOperationsPage({
   }
 
   return (
-    <div className="page-stack">
+    <DashboardPage>
       {!paymentOperationsApi ? (
         <Panel
           title="Payment Operations"
@@ -148,52 +155,69 @@ export function PaymentOperationsPage({
         </div>
       ) : null}
 
-      <Panel
-        title="Payment Operations"
-        description="Review member payment history, including normalized QR, school payment, and dispute receipts, before taking action on payment cases."
-      >
-        <div className="dashboard-summary-strip">
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Members with payment cases</span>
-            <strong>{memberQueue.length.toLocaleString()}</strong>
+      <DashboardGrid>
+        <DashboardSectionCard
+          title="Payment Operations Snapshot"
+          description="Review member payment history, including normalized QR, school payment, and dispute receipts, before taking action on payment cases."
+        >
+          <div className="dashboard-stack">
+            <DashboardMetricRow label="Members with payment cases" value={memberQueue.length.toLocaleString()} />
+            <DashboardMetricRow
+              label="Open payment cases"
+              value={memberQueue.reduce((sum, item) => sum + item.openCases, 0).toLocaleString()}
+            />
+            <DashboardMetricRow
+              label="Selected branch"
+              value={selectedMember?.branchName ?? session.branchName ?? 'n/a'}
+            />
           </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Open payment cases</span>
-            <strong>
-              {memberQueue.reduce((sum, item) => sum + item.openCases, 0).toLocaleString()}
-            </strong>
-          </div>
-          <div className="dashboard-summary-chip">
-            <span className="dashboard-summary-label">Selected branch</span>
-            <strong>{selectedMember?.branchName ?? session.branchName ?? 'n/a'}</strong>
-          </div>
-        </div>
+        </DashboardSectionCard>
 
-        <SimpleTable
-          headers={['Customer', 'Branch', 'Open Cases', 'Latest Activity', 'Review']}
-          rows={memberQueue.map((item) => [
-            `${item.memberName} (${item.customerId})`,
-            item.branchName ?? 'n/a',
-            item.openCases.toLocaleString(),
-            item.latestActivityAt ?? 'n/a',
-            <button
-              key={item.memberId}
-              type="button"
-              className="loan-watchlist-link"
-              onClick={() => {
-                setSelectedMemberId(item.memberId);
-                setReceiptFilter('all');
-              }}
-            >
-              Review payments
-            </button>,
-          ])}
-          emptyState={{
-            title: 'No payment operations queue yet',
-            description: 'Payment cases will appear here once customers submit disputes or failed transfer reports.',
-          }}
-        />
-      </Panel>
+        <DashboardSectionCard
+          title="Payment Queue Focus"
+          description="Select a member to inspect receipts and supporting evidence."
+        >
+          <div className="dashboard-stack">
+            <DashboardMetricRow
+              label="Selected member"
+              value={selectedMember ? selectedMember.memberName : 'Not selected'}
+              note={selectedMember ? selectedMember.customerId : 'Pick a member from the queue'}
+            />
+            <DashboardMetricRow
+              label="Visible members"
+              value={memberQueue.length.toLocaleString()}
+              note="Payment activity records in this scope"
+            />
+          </div>
+        </DashboardSectionCard>
+      </DashboardGrid>
+
+      <DashboardTableCard
+        title="Payment Queue"
+        description="Members with payment cases waiting for operations review."
+        headers={['Customer', 'Branch', 'Open Cases', 'Latest Activity', 'Review']}
+        rows={
+          memberQueue.length > 0
+            ? memberQueue.map((item) => [
+                `${item.memberName} (${item.customerId})`,
+                item.branchName ?? 'n/a',
+                item.openCases.toLocaleString(),
+                item.latestActivityAt ?? 'n/a',
+                <button
+                  key={item.memberId}
+                  type="button"
+                  className="loan-watchlist-link"
+                  onClick={() => {
+                    setSelectedMemberId(item.memberId);
+                    setReceiptFilter('all');
+                  }}
+                >
+                  Review payments
+                </button>,
+              ])
+            : [['No payment operations queue yet', '-', '-', '-', '-']]
+        }
+      />
 
       {paymentOperationsApi && selectedMember ? (
         <Panel
@@ -304,7 +328,7 @@ export function PaymentOperationsPage({
           />
         </Panel>
       ) : null}
-    </div>
+    </DashboardPage>
   );
 }
 
